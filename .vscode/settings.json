@@ -23,4 +23,21 @@
             "snippet": "ns-template"
         },
     ],
+    "cSpell.words": [
+        "brutessh",
+        "CSEC",
+        "fluffer",
+        "ftpcrack",
+        "httpworm",
+        "Netburners",
+        "Netscript",
+        "relaysmtp",
+        "sqlinject",
+        "tprint",
+        "tprintf",
+        "run4theh111z",
+        "avmnite-02h",
+        "n00dles"
+    ],
+    "bitburner.fileWatcher.enable": true
 }
