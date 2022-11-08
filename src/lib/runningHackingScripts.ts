@@ -1,40 +1,39 @@
-import { NS } from '@ns'
-import { Logger, LogType } from 'lib/logging/Logger'
+import {NS} from '@ns'
+import {Logger, LogType} from 'lib/logging/Logger'
+import {getNetNodes} from 'lib/NetNode'
 import * as enums from 'lib/enums'
+
+const launchpadScripts = Object.values(enums.LaunchpadScripts) as string[]
 
 /**
  * Waits for all hacking scripts targeting a server to finnish.
  *
  * @param {NS} ns
- * @param {String} execServerHostname
- * @param {String} targetServerHostname
+ * @param {String} targetHostname
  */
-export async function runningHackingScripts(
-	ns: NS,
-	execHostname: string,
-	targetHostname: string
-): Promise<void> {
+export async function runningHackingScripts(ns: NS, targetHostname: string): Promise<void> {
 	const logger = new Logger(ns)
 
-	const runningScripts = ns
-		.ps(execHostname)
-		.filter((script) => script.args.includes(targetHostname))
-		.filter((script) => {
-			return (
-				script.filename === enums.LaunchpadScripts.hack ||
-				script.filename === enums.LaunchpadScripts.grow ||
-				script.filename === enums.LaunchpadScripts.weaken
-			)
-		})
-	if (runningScripts.length > 0) {
-		logger.info(
-			LogType.log,
-			'Waiting for running hacking scripts to conclude'
-		)
+	const processesByHostname = getNetNodes(ns).map(node => {
+		const processes = ns.ps(node.server.hostname)
+			.filter(process => process.args.includes(targetHostname))
+			.filter(process => launchpadScripts.includes(process.filename))
+		return {
+			hostname: node.server.hostname,
+			processes: processes,
+		}
+	})
+
+	// TODO why does this always appear?
+	if (processesByHostname.length > 0) {
+		logger.info(LogType.log, 'Waiting for running hacking scripts to conclude')
 	}
-	for (let i = 0; i < runningScripts.length; i++) {
-		while (ns.isRunning(runningScripts[i].pid)) {
-			await ns.sleep(1000)
+
+	for (const entry of processesByHostname) {
+		for (const process of entry.processes) {
+			while (ns.isRunning(process.pid, entry.hostname)) {
+				await ns.sleep(1000)
+			}
 		}
 	}
 }

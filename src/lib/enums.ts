@@ -16,8 +16,13 @@ export enum Commands {
 }
 
 export enum DaemonScripts {
-	simpleBatcher = '/daemons/SimpleBatcherDaemon.js',
-	formulasBatcher = '/daemons/FormulasBatcherDaemon.js',
+	r00terDaemon = '/daemons/R00terDaemon.js',
+	ramManagerDaemon = '/daemons/RamManagerDaemon.js',
+}
+
+export enum BatcherScripts {
+	fluffer = '/bin/Fluffer.js',
+	batcher = '/bin/Batcher.js',
 }
 
 export enum LaunchpadScripts {
@@ -25,6 +30,7 @@ export enum LaunchpadScripts {
 	grow = '/launchpad/grow.js',
 	weaken = '/launchpad/weaken.js',
 }
+
 export enum Security {
 	hackIncrease = 0.002,
 	growIncrease = 0.004,
@@ -47,13 +53,21 @@ export enum ScriptCost {
 }
 
 export enum PortIndex {
-	ramManager = 1,
+	ramMessaging = 1,
+	cncBroadcasting = 2,
+	cncMessaging = 3,
 }
+
+export enum PortCleanup {
+	ramManager = PortIndex.ramMessaging,
+	cncMessaging = PortIndex.cncMessaging
+}
+
 export const hackingFactionServers = {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	CSEC: 'CyberSec',
+	'CSEC': 'CyberSec',
 	'avmnite-02h': 'NiteSec',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'I.I.I.I': 'The Black Hand',
-	run4theh111z: 'Netburners',
+	'run4theh111z': 'BitRunners',
 } as Record<string, string>

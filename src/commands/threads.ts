@@ -1,26 +1,29 @@
-import { NS } from '@ns'
-import { Logger, LogType } from 'lib/logging/Logger'
-import { calculateMaxThreadCount } from 'lib/calculateMaxThreadCount'
-import * as enums from 'lib/enums'
+import {NS} from '@ns'
+import {Logger, LogType} from '/lib/logging/Logger'
+import {createRamClient} from '/daemons/ram/IpcRamClient'
+
+const identifier = 'command-threads'
 
 export async function main(ns: NS): Promise<void> {
 	const logger = new Logger(ns)
 
-	const args = ns.flags([['free', false]])
-	const free = args['free'] as boolean
-	const threadRamCost = (
-		(args['_'] as string[]).length === 0 ? enums.ScriptCost.launchpadScripts : (args['_'] as string[])[0]
-	) as number
+	const client = createRamClient(ns, identifier)
+	const data = await client.lookupThreads()
 
-	const maxThreadsPerServer = calculateMaxThreadCount(ns, threadRamCost, free)
+	const dataEntries = Object.entries(data)
 
-	Object.entries(maxThreadsPerServer).forEach((entry) =>
+	if (dataEntries.length === 0) {
+		logger.print(LogType.terminal, 'No threads available')
+		return
+	}
+
+	dataEntries.forEach((entry) =>
 		logger.print(LogType.terminal, '%s -> %s', entry[0], entry[1])
 	)
 	logger.print(LogType.terminal, '======')
 	logger.print(
 		LogType.terminal,
 		'Total -> %s',
-		Object.values(maxThreadsPerServer).reduce((a, b) => a + b)
+		Object.values(data).reduce((a, b) => a + b)
 	)
 }

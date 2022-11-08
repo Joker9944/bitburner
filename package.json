@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "npx tsc",
+    "clean": "rimraf dist",
     "watch": "npx tsc -w",
     "lint": "eslint . --ext .ts",
     "defs": "node ./updateDefs.js"

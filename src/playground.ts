@@ -1,9 +1,9 @@
-import { NS } from '@ns'
-import { IpcClient } from 'lib/ipc/IpcClient'
-import { getNetNodes } from 'lib/NetNode'
-import { findBatcherHackingPercentage } from 'lib/findBatcherHackingPercentage'
-import * as enums from 'lib/enums'
+import {NS} from '@ns'
 
 export async function main(ns: NS): Promise<void> {
-	ns.print('lol')
+	const moneyPerHackThread = ns.hackAnalyze('n00dles') * ns.getServerMaxMoney('n00dles')
+	const actuallyStolen = await ns.hack('n00dles')
+	ns.tprintf('%s / %s', moneyPerHackThread, actuallyStolen)
+	await ns.grow('n00dles')
+	await ns.weaken('n00dles')
 }

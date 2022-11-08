@@ -1,7 +1,7 @@
-import { NS } from '@ns'
-import { getNetNodes } from 'lib/NetNode'
-import { Logger, LogType } from 'lib/logging/Logger'
-import { Toaster } from 'lib/logging/Toaster'
+import {NS} from '@ns'
+import {Logger, LogType} from 'lib/logging/Logger'
+import {Toaster} from 'lib/logging/Toaster'
+import {getNetNodes} from 'lib/NetNode'
 import * as enums from 'lib/enums'
 
 const portBreakerFiles = Object.values(enums.PortBreakerFiles)
@@ -14,7 +14,6 @@ export async function main(ns: NS): Promise<void> {
 	const logger = new Logger(ns)
 	const toaster = new Toaster(ns)
 
-	const execServerHostname = ns.getHostname()
 	const netNodes = getNetNodes(ns)
 	let rootedServersCount = netNodes.filter((node) => node.server.hasAdminRights).length
 
@@ -50,7 +49,7 @@ export async function main(ns: NS): Promise<void> {
 				ns.nuke(node.server.hostname)
 				rootedServersCount++
 
-				ns.scp(launchpadScripts, node.server.hostname, execServerHostname)
+				ns.scp(launchpadScripts, node.server.hostname, 'home')
 
 				logger.info(LogType.log, 'Rooted %s', node.server.hostname)
 				toaster.info('Rooted', node.server.hostname)

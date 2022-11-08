@@ -1,4 +1,4 @@
-import { NS, Player, Server } from '@ns'
+import {NS, Player, Server} from '@ns'
 import * as enums from 'lib/enums'
 
 export function findBatcherThreadCounts(
