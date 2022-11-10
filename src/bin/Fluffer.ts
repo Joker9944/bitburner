@@ -1,14 +1,15 @@
 import {NS} from '@ns'
 import {IdentifierLogger, LogType} from "/lib/logging/Logger";
 import {Toaster} from "/lib/logging/Toaster";
+import {FlufferCalculator} from "/lib/FlufferCalculator";
 import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient";
 import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient";
 import {Bounds} from "/daemons/cnc/Bounds";
 import {getNetNode} from "/lib/NetNode";
-import * as enums from "/lib/enums";
 import {runningHackingScripts} from "/lib/runningHackingScripts";
-import {FlufferCalculator} from "/lib/FlufferCalculator";
-import {Allotments} from "/daemons/ram/RamMessageType";
+import {execReservations} from "/daemons/ram/execReservations";
+import {calculateTotalTickets} from "/daemons/ram/RamMessageType";
+import * as enums from "/lib/enums";
 
 const identifierPrefix = 'fluffer-'
 
@@ -47,79 +48,124 @@ class Fluffer {
 	async main(): Promise<void> {
 		await runningHackingScripts(this._ns, this._calculator.targetNode.server.hostname)
 
-		const maxThreads = await this.determineMaxThreads()
 
 		let weakenBatch = 0
 		while (this._calculator.targetNode.server.hackDifficulty > this._calculator.targetNode.server.minDifficulty) {
+			const maxThreads = await this.determineMaxThreads()
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
-			let threads = this._calculator.calculateNeededWeakenThreads(securityDecrease)
-			if (threads > maxThreads) {
-				this._logger.warn(LogType.log, weakenBatch, 'Weaken thread count hit limit %s > %s', threads, maxThreads)
-				threads = maxThreads
+
+			let calculatedThreads = this._calculator.calculateNeededWeakenThreads(securityDecrease)
+			if (calculatedThreads > maxThreads) {
+				this._logger.warn(LogType.log, 'weaken-' + weakenBatch, 'Weaken thread count hit limit %s > %s',
+					calculatedThreads, maxThreads)
+				calculatedThreads = maxThreads
 			}
 
 			const wait = this._calculator.determineWWait() + 200
 
-			const allotments = await this._ramClient.reserveThreads(threads, wait)
-			const reservedThreads = Object.values(allotments).reduce((a, b) => a + b)
+			const reservation = (await this._ramClient.reserveThreads({
+				name: 'weaken',
+				tickets: calculatedThreads,
+				allocationSize: enums.ScriptCost.weaken,
+				duration: wait
+			})).weaken
+			const reservedThreads = calculateTotalTickets(reservation)
 
-			const startedThreads = this.startWeakenThreads(allotments)
+			const startedThreads = execReservations(this._ns, reservation, enums.LaunchpadScripts.weaken,
+				this._calculator.targetNode.server.hostname);
+
+			if (startedThreads !== calculatedThreads) {
+				this._logger.error(LogType.log, 'weaken-' + weakenBatch,
+					'Started threads do not match calculated total threads %s != %s',
+					startedThreads, calculatedThreads
+				)
+				this._toaster.error('Started thread mismatch', this._calculator.targetNode.server.hostname)
+			}
 
 			if (startedThreads !== reservedThreads) {
-				this._logger.warn(LogType.log, weakenBatch, 'Started threads do not match reserved threads %s != %s',
+				this._logger.error(LogType.log, 'weaken-' + weakenBatch,
+					'Started threads do not match reserved threads %s != %s',
 					startedThreads, reservedThreads
 				)
-				this._toaster.warn('Started thread mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
-			const exceptedSecurity = this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty - threads * securityDecrease
-			this._logger.info(LogType.log, weakenBatch, 'Excepted outcome %s/%s',
-				Math.max(exceptedSecurity, 0),
+			const exceptedSecurity = this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty - calculatedThreads * securityDecrease
+			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Excepted outcome %s/%s',
+				this._ns.nFormat(Math.max(exceptedSecurity, 0), enums.Format.security),
 				100 - this._calculator.targetNode.server.minDifficulty)
-			this._logger.info(LogType.log, weakenBatch, 'Weaken: %s, Reserved: %s', threads, reservedThreads)
-			this._logger.info(LogType.log, weakenBatch, 'Duration %s', this._ns.tFormat(wait, true))
+			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Weaken: %s, Reserved: %s',
+				calculatedThreads, reservedThreads)
+			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Duration %s',
+				this._ns.tFormat(wait, true))
 
 			await this._ns.sleep(wait)
 
 			this._calculator.refresh()
 
-			this._logger.info(LogType.log, weakenBatch, 'Actual outcome: %s/%s',
-				this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty,
+			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Actual outcome: %s/%s',
+				this._ns.nFormat(this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty, enums.Format.security),
 				100 - this._calculator.targetNode.server.minDifficulty
 			)
 
 			weakenBatch++
 		}
 
-		// TODO find a way to improve this
-		const growThreads = Math.floor(maxThreads * 0.9)
-
 		let growBatch = 0
 		while (this._calculator.targetNode.server.moneyAvailable < this._calculator.targetNode.server.moneyMax) {
+			const maxThreads = await this.determineMaxThreads()
+			const calculatedThreadsGrow = Math.floor(maxThreads * 0.9) // TODO find a way to improve this
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
-			const securityDeficit = this._ns.growthAnalyzeSecurity(growThreads)
-			const weakenThreads = Math.ceil(securityDeficit / securityDecrease)
+			const securityDeficit = this._ns.growthAnalyzeSecurity(calculatedThreadsGrow)
+			const calculatedThreadsWeaken = Math.ceil(securityDeficit / securityDecrease)
+			const calculatedTotal = calculatedThreadsGrow + calculatedThreadsWeaken
 
 			const wait = this._calculator.determineWGWait() + 200
 
-			const allotments = await this._ramClient.reserveThreads(growThreads + weakenThreads, wait)
-			const reservedThreads = Object.values(allotments).reduce((a, b) => a + b)
+			const reservations = await this._ramClient.reserveThreads({
+				name: 'weaken',
+				tickets: calculatedThreadsWeaken,
+				allocationSize: enums.ScriptCost.weaken,
+				duration: wait
+			}, {
+				name: 'grow',
+				tickets: calculatedThreadsGrow,
+				allocationSize: enums.ScriptCost.grow,
+				duration: wait
+			})
+			const reservedThreadsTotal = calculateTotalTickets(Object.values(reservations).flat())
 
-			const startedThreads = this.startThreads(weakenThreads, growThreads, allotments)
+			const startedThreadsWeaken = execReservations(this._ns, reservations.weaken, enums.LaunchpadScripts.weaken,
+				this._calculator.targetNode.server.hostname);
+			const startedThreadsGrow = execReservations(this._ns, reservations.grow, enums.LaunchpadScripts.grow,
+				this._calculator.targetNode.server.hostname);
+			const startedThreadsTotal = startedThreadsWeaken + startedThreadsGrow
 
-			if (startedThreads !== reservedThreads) {
-				this._logger.warn(LogType.log, growBatch, 'Started threads do not match reserved threads %s != %s',
-					startedThreads, reservedThreads
+			if (startedThreadsTotal !== calculatedTotal) {
+				this._logger.error(LogType.log, 'grow-' + growBatch,
+					'Started threads do not match calculated total threads %s != %s',
+					startedThreadsTotal, calculatedTotal
 				)
-				this._toaster.warn('Started thread mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Started thread mismatch', this._calculator.targetNode.server.hostname)
 			}
-			this._logger.info(LogType.log, growBatch, 'Weaken: %s, Grow: %s, Reserved: %s', weakenThreads, growThreads, reservedThreads)
-			this._logger.info(LogType.log, growBatch, 'Duration %s', this._ns.tFormat(wait, true))
+
+			if (startedThreadsTotal !== reservedThreadsTotal) {
+				this._logger.error(LogType.log, 'grow-' + growBatch,
+					'Started threads do not match reserved threads %s != %s',
+					startedThreadsTotal, reservedThreadsTotal
+				)
+				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
+			}
+
+			this._logger.info(LogType.log, 'grow-' + growBatch, 'Grow: %s, Weaken: %s, Reserved: %s',
+				calculatedThreadsGrow, calculatedThreadsWeaken, reservedThreadsTotal)
+			this._logger.info(LogType.log, 'grow-' + growBatch, 'Duration %s',
+				this._ns.tFormat(wait, true))
 
 			await this._ns.sleep(wait)
 
 			this._calculator.refresh()
 
-			this._logger.info(LogType.log, growBatch, 'outcome: %s/%s',
+			this._logger.info(LogType.log, 'grow-' + growBatch, 'Outcome: %s/%s', // TODO implement outcome prediction
 				this._ns.nFormat(this._calculator.targetNode.server.moneyAvailable, '$0.000a'),
 				this._ns.nFormat(this._calculator.targetNode.server.moneyMax, '$0.000a')
 			)
@@ -127,62 +173,6 @@ class Fluffer {
 			growBatch++
 		}
 		await this._ramClient.releaseReservations()
-	}
-
-	startWeakenThreads(allotments: Allotments): number {
-		const allotmentsEntries = Object.entries(allotments)
-
-		let startedWeaken = 0
-		for (const entry of allotmentsEntries) {
-			this._ns.exec(
-				enums.LaunchpadScripts.weaken,
-				entry[0],
-				entry[1],
-				this._calculator.targetNode.server.hostname
-			)
-			startedWeaken += entry[1]
-		}
-
-		return startedWeaken
-	}
-
-	startThreads(weakenThreads: number, growThreads: number, allotments: Allotments): number {
-		const allotmentsEntries = Object.entries(allotments)
-
-		let startedGrow = 0
-		let startedWeaken = 0
-		for (let i = 0; i < allotmentsEntries.length; i++) {
-			const hostname = allotmentsEntries[i][0]
-			const allotment = allotmentsEntries[i][1]
-
-			let started = 0
-			while (started < allotment && startedGrow + startedWeaken < weakenThreads + growThreads) {
-				if (started < allotment && startedWeaken < weakenThreads) {
-					const threads = weakenThreads - startedWeaken > allotment ? allotment : weakenThreads - startedWeaken
-					this._ns.exec(
-						enums.LaunchpadScripts.weaken,
-						hostname,
-						threads,
-						this._calculator.targetNode.server.hostname
-					)
-					startedWeaken += threads
-					started += threads
-				}
-				if (started < allotment && startedGrow < growThreads) {
-					const threads = growThreads - startedGrow > allotment ? allotment : growThreads - startedGrow
-					this._ns.exec(
-						enums.LaunchpadScripts.grow,
-						hostname,
-						threads,
-						this._calculator.targetNode.server.hostname
-					)
-					startedGrow += threads
-					started += threads
-				}
-			}
-		}
-
-		return startedGrow + startedWeaken
 	}
 
 	async determineMaxThreads(): Promise<number> {

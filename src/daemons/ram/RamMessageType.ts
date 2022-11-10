@@ -1,11 +1,36 @@
-export type RamMessageType = Allotments | RamReservation | string
+export type RamMessageType = Allotments | ReservationRequest[] | ReservationsByKey | string | number
 
 export type Allotments = {
-	[key: string]: number
+	[hostname: string]: Allocation
 }
 
-export type RamReservation = {
-	requestedRam: number
+export type Allocation = number
+
+export type ReservationRequest = {
+	name: string
+	tickets: number
 	allocationSize: number
-	time: number
+	duration?: number
+}
+
+export type ReservationsByKey = {
+	[key: string]: Reservation[]
+}
+
+export type Reservation = {
+	owner: string
+	name: string
+	hostname: string
+	ramMB: number
+	allocationSize: number
+	timeout?: number
+}
+
+export function calculateTickets(reservation: Reservation): number {
+	return Math.floor(reservation.ramMB / reservation.allocationSize)
+}
+
+export function calculateTotalTickets(reservations: Reservation[]): number {
+	return reservations.map(reservation => calculateTickets(reservation))
+		.reduce((a, b) => a + b)
 }

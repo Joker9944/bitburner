@@ -18,10 +18,14 @@ export class IpcMessagingClient<T> {
 		this._portClient = portClient
 	}
 
-	async get(endpoint: unknown): Promise<Response<T>> {
+	async get(endpoint: unknown, data?: T): Promise<Response<T>> {
 		const message: Message<T> = {
 			endpoint: endpoint,
 			messageId: this._portClient.identifier + '-' + this._index++
+		}
+
+		if (data !== undefined) {
+			message.messageData = data
 		}
 
 		await this._portClient.write(this._host, message)

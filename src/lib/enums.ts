@@ -6,8 +6,13 @@ export enum PortBreakerFiles {
 	sqlinject = 'SQLInject.exe',
 }
 
-export enum ProgramFiles {
-	formulas = 'Formulas.exe',
+export enum PortBreakerFilesCost {
+	tor = 200000,
+	brutessh = 'BruteSSH.exe',
+	ftpcrack = 'FTPCrack.exe',
+	relaysmtp = 'relaySMTP.exe',
+	httpworm = 'HTTPWorm.exe',
+	sqlinject = 'SQLInject.exe',
 }
 
 export enum Commands {
@@ -49,7 +54,9 @@ export const reservedRam = {
 } as Record<string, number>
 
 export enum ScriptCost {
-	launchpadScripts = 1750,
+	hack = 1700,
+	grow = 1750,
+	weaken = 1750,
 }
 
 export enum PortIndex {

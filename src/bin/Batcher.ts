@@ -2,14 +2,14 @@ import {NS} from '@ns'
 import {IdentifierLogger, LogType} from '/lib/logging/Logger'
 import {Toaster} from '/lib/logging/Toaster'
 import {HGWFormulasCalculator} from '/lib/HGWFormulasCalculator'
-import {HGWThreads} from '/lib/findBatcherThreadCounts'
 import {createRamClient, IpcRamClient} from '/daemons/ram/IpcRamClient'
-import {Allotments} from "/daemons/ram/RamMessageType";
+import {calculateTotalTickets} from "/daemons/ram/RamMessageType";
+import {execReservations} from "/daemons/ram/execReservations";
+import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient";
+import {Bounds} from "/daemons/cnc/Bounds";
 import {getNetNode} from '/lib/NetNode'
 import {runningHackingScripts} from "/lib/runningHackingScripts";
 import * as enums from '/lib/enums'
-import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient";
-import {Bounds} from "/daemons/cnc/Bounds";
 
 const identifierPrefix = 'batcher-'
 const refreshPeriod = 60000
@@ -40,14 +40,16 @@ class Batcher {
 	private readonly _ramClient: IpcRamClient
 	private readonly _broadcastClient: IpcBroadcastClient<Bounds>
 
-	constructor(ns: NS, targetServerHostname: string, maxHackPercentage: number, hackPercentageSuggestion: number, growThreadsSuggestion: number) {
+	constructor(ns: NS, targetServerHostname: string, maxHackPercentage: number,
+	            hackPercentageSuggestion: number, growThreadsSuggestion: number) {
 		this._ns = ns
 
 		this._logger = new IdentifierLogger(ns)
 		this._toaster = new Toaster(ns)
 
 		const targetNode = getNetNode(ns, targetServerHostname)
-		this._calculator = new HGWFormulasCalculator(ns, targetNode, maxHackPercentage, hackPercentageSuggestion, growThreadsSuggestion)
+		this._calculator = new HGWFormulasCalculator(ns, targetNode,
+			maxHackPercentage, hackPercentageSuggestion, growThreadsSuggestion)
 
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
 		this._broadcastClient = createBroadcastClient(ns, enums.PortIndex.cncBroadcasting)
@@ -65,43 +67,67 @@ class Batcher {
 				const data = await this._broadcastClient.get()
 				this._calculator.maxHackPercentage = data.maxHackPercentage
 				maxThreads = await this.determineMaxThreads()
-				this._logger.info(LogType.log, batch, 'Refreshed settings')
-				this._logger.info(LogType.log, batch, 'Max threads: %s, Max hack%%: %s', maxThreads, this._ns.nFormat(this._calculator.maxHackPercentage, enums.Format.percentage))
+				this._logger.info(LogType.log, batch, 'Max threads: %s, Max hack%%: %s',
+					maxThreads, this._ns.nFormat(this._calculator.maxHackPercentage, enums.Format.percentage))
 				lastRefresh = now
 			}
 
 			const wait = this._calculator.determineHWGWait() + 200
 
-			const allotments = await this._ramClient.reserveThreads(maxThreads, wait)
-			const reservedThreads = Object.values(allotments).reduce((a, b) => a + b)
-			const hackPercentage = this._calculator.findHackingPercentage(reservedThreads)
-			const threads = this._calculator.findThreadCounts(hackPercentage)
+			const hackPercentage = this._calculator.findHackingPercentage(maxThreads)
+			const calculatedThreads = this._calculator.findThreadCounts(hackPercentage)
 
-			if (threads.totalSecurityIncrease > 100 - this._calculator.targetNode.server.minDifficulty) {
+			if (calculatedThreads.totalSecurityIncrease > 100 - this._calculator.targetNode.server.minDifficulty) {
 				this._logger.warn(LogType.log, batch, 'Hitting max security %s / %s',
-					this._ns.nFormat(threads.totalSecurityIncrease, enums.Format.security),
+					this._ns.nFormat(calculatedThreads.totalSecurityIncrease, enums.Format.security),
 					this._ns.nFormat(100 - this._calculator.targetNode.server.minDifficulty, enums.Format.security)
 				)
 				this._toaster.warn('Hitting max security', this._calculator.targetNode.server.hostname)
 			}
 
-			const startedThreads = this.startThreads(threads, allotments)
-			if (startedThreads !== threads.total()) {
-				this._logger.warn(LogType.log, batch, 'Started threads do not match total threads %s != %s',
-					startedThreads, threads.total()
+			const reservations = await this._ramClient.reserveThreads({
+				name: 'weaken',
+				tickets: calculatedThreads.weaken,
+				allocationSize: enums.ScriptCost.weaken,
+				duration: wait
+			}, {
+				name: 'grow',
+				tickets: calculatedThreads.grow,
+				allocationSize: enums.ScriptCost.grow,
+				duration: wait
+			}, {
+				name: 'hack',
+				tickets: calculatedThreads.hack,
+				allocationSize: enums.ScriptCost.hack,
+				duration: wait
+			})
+			const reservedThreadsTotal = calculateTotalTickets(Object.values(reservations).flat())
+
+			const startedThreadsWeaken = execReservations(this._ns, reservations.weaken, enums.LaunchpadScripts.weaken,
+				this._calculator.targetNode.server.hostname);
+			const startedThreadsGrow = execReservations(this._ns, reservations.grow, enums.LaunchpadScripts.grow,
+				this._calculator.targetNode.server.hostname);
+			const startedThreadsHack = execReservations(this._ns, reservations.hack, enums.LaunchpadScripts.hack,
+				this._calculator.targetNode.server.hostname);
+			const startedThreadsTotal = startedThreadsWeaken + startedThreadsGrow + startedThreadsHack
+
+			if (startedThreadsTotal !== calculatedThreads.total()) {
+				this._logger.error(LogType.log, batch, 'Started threads do not match calculated total threads %s != %s',
+					startedThreadsTotal, calculatedThreads.total()
 				)
-				this._toaster.warn('Started thread mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Started thread mismatch', this._calculator.targetNode.server.hostname)
 			}
 
-			if (startedThreads > reservedThreads) {
-				this._logger.error(LogType.log, batch, 'Started more threads than reserved %s > %s',
-					startedThreads, reservedThreads
+			if (startedThreadsTotal !== reservedThreadsTotal) {
+				this._logger.error(LogType.log, batch, 'Started threads do not match reserved threads %s != %s',
+					startedThreadsTotal, reservedThreadsTotal
 				)
 				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
 
 			this._logger.info(LogType.log, batch, 'Hack: %s, Grow: %s, Weaken: %s, Total: %s, Reserved: %s',
-				threads.hack, threads.grow, threads.weaken, threads.total(), reservedThreads
+				calculatedThreads.hack, calculatedThreads.grow, calculatedThreads.weaken,
+				calculatedThreads.total(), reservedThreadsTotal
 			)
 			this._logger.info(LogType.log, batch, 'Hack%%: %s',
 				this._ns.nFormat(hackPercentage, enums.Format.percentage)
@@ -140,58 +166,5 @@ class Batcher {
 		const maxAvailableThreads = await this._ramClient.lookupTotalThreads()
 		const maxNeededThreads = this._calculator.findMaxThreadCounts().total()
 		return Math.min(maxAvailableThreads, maxNeededThreads)
-	}
-
-	startThreads(threads: HGWThreads, allotments: Allotments): number {
-		const allotmentsEntries = Object.entries(allotments)
-
-		let startedHack = 0
-		let startedGrow = 0
-		let startedWeaken = 0
-		for (let i = 0; i < allotmentsEntries.length; i++) {
-			const hostname = allotmentsEntries[i][0]
-			const allotment = allotmentsEntries[i][1]
-
-			let started = 0
-			while (started < allotment && startedHack + startedGrow + startedWeaken < threads.total()) {
-				if (started < allotment && startedWeaken < threads.weaken) {
-					const threadsWeaken =
-						threads.weaken - startedWeaken > allotment ? allotment : threads.weaken - startedWeaken
-					// TODO improve exec error detection
-					this._ns.exec(
-						enums.LaunchpadScripts.weaken,
-						hostname,
-						threadsWeaken,
-						this._calculator.targetNode.server.hostname
-					)
-					startedWeaken += threadsWeaken
-					started += threadsWeaken
-				}
-				if (started < allotment && startedGrow < threads.grow) {
-					const threadsGrow = threads.grow - startedGrow > allotment ? allotment : threads.grow - startedGrow
-					this._ns.exec(
-						enums.LaunchpadScripts.grow,
-						hostname,
-						threadsGrow,
-						this._calculator.targetNode.server.hostname
-					)
-					startedGrow += threadsGrow
-					started += threadsGrow
-				}
-				if (started < allotment && startedHack < threads.hack) {
-					const threadsHack = threads.hack - startedHack > allotment ? allotment : threads.hack - startedHack
-					this._ns.exec(
-						enums.LaunchpadScripts.hack,
-						hostname,
-						threadsHack,
-						this._calculator.targetNode.server.hostname
-					)
-					startedHack += threadsHack
-					started += threadsHack
-				}
-			}
-		}
-
-		return startedHack + startedGrow + startedWeaken
 	}
 }

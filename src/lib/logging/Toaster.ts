@@ -1,5 +1,5 @@
-import { NS } from '@ns'
-import { Severity } from 'lib/logging/Severity'
+import {NS} from '@ns'
+import {Severity} from 'lib/logging/Severity'
 
 const defaultLength = 10000
 
@@ -56,6 +56,9 @@ export class Toaster {
 		if (identifier) {
 			message = '[' + identifier + '] ' + message
 		}
+		// TODO this is not needed anymore after update
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
 		this.ns.toast(message, severity.toLowerCase(), defaultLength)
 	}
 }

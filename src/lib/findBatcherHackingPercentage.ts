@@ -1,33 +1,25 @@
-import { NS, Player, Server } from '@ns'
-import { findBatcherThreadCounts, HGWThreads } from 'lib/findBatcherThreadCounts'
+import {NS, Player, Server} from '@ns'
+import {findBatcherThreadCounts, HGWThreads} from 'lib/findBatcherThreadCounts'
 
-export function findBatcherHackingPercentage(
-	ns: NS,
-	targetThreadCount: number,
-	percentageSuggestion: number,
-	maxPercentage: number,
-	growThreadsSuggestion: number,
-	player: Player,
-	target: Server,
-	cores: number
-): number {
+export function findBatcherHackingPercentage(ns: NS, targetThreadCount: number, percentageSuggestion: number, maxPercentage: number,
+                                             growThreadsSuggestion: number, player: Player, target: Server, cores: number): number {
 	const max = findBatcherThreadCounts(ns, maxPercentage, growThreadsSuggestion, player, target, cores)
 	if (max.total() <= targetThreadCount) {
 		return maxPercentage
 	}
 
-	const low = searchLow(
-		ns,
-		targetThreadCount,
-		Math.min(percentageSuggestion + 0.1, maxPercentage),
-		0.05,
-		growThreadsSuggestion,
-		player,
-		target,
-		cores
-	)
-	const high = searchHigh(ns, targetThreadCount, low.percentage, 0.05, low.threads.grow, player, target, cores)
-	return searchLow(ns, targetThreadCount, high.percentage, 0.01, high.threads.grow, player, target, cores).percentage
+	const startHigh = Math.min(percentageSuggestion + 0.1, maxPercentage)
+	const searchImprecise = 0.01
+	const searchPrecise = 0.001
+
+	const low = searchLow(ns, targetThreadCount, startHigh, searchImprecise, growThreadsSuggestion, player, target, cores)
+	const high = searchHigh(ns, targetThreadCount, low.percentage, searchImprecise, low.threads.grow, player, target, cores)
+	const result = searchLow(ns, targetThreadCount, high.percentage, searchPrecise, high.threads.grow, player, target, cores).percentage
+	return fixed(result)
+}
+
+function fixed(percent: number, decimalPlace = 2): number {
+	return +percent.toFixed(decimalPlace)
 }
 
 class Result {
@@ -40,56 +32,22 @@ class Result {
 	}
 }
 
-function searchHigh(
-	ns: NS,
-	targetThreadCount: number,
-	percentage: number,
-	increase: number,
-	growThreadsSuggestion: number,
-	player: Player,
-	target: Server,
-	cores: number
-): Result {
+function searchHigh(ns: NS, targetThreadCount: number, percentage: number, increase: number, growThreadsSuggestion: number,
+                    player: Player, target: Server, cores: number): Result {
 	const threads = findBatcherThreadCounts(ns, percentage, growThreadsSuggestion, player, target, cores)
 	if (threads.total() >= targetThreadCount) {
 		return new Result(threads, percentage)
 	} else {
-		return searchHigh(
-			ns,
-			targetThreadCount,
-			+(percentage + increase).toFixed(2),
-			increase,
-			threads.grow,
-			player,
-			target,
-			cores
-		)
+		return searchHigh(ns, targetThreadCount, percentage + increase, increase, threads.grow, player, target, cores)
 	}
 }
 
-function searchLow(
-	ns: NS,
-	targetThreadCount: number,
-	percentage: number,
-	decrease: number,
-	growThreadsSuggestion: number,
-	player: Player,
-	target: Server,
-	cores: number
-): Result {
+function searchLow(ns: NS, targetThreadCount: number, percentage: number, decrease: number, growThreadsSuggestion: number,
+                   player: Player, target: Server, cores: number): Result {
 	const threads = findBatcherThreadCounts(ns, percentage, growThreadsSuggestion, player, target, cores)
 	if (threads.total() <= targetThreadCount) {
 		return new Result(threads, percentage)
 	} else {
-		return searchLow(
-			ns,
-			targetThreadCount,
-			+(percentage - decrease).toFixed(2),
-			decrease,
-			threads.grow,
-			player,
-			target,
-			cores
-		)
+		return searchLow(ns, targetThreadCount, percentage - decrease, decrease, threads.grow, player, target, cores)
 	}
 }

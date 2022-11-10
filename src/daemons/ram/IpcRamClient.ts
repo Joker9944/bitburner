@@ -1,7 +1,7 @@
 import {NS} from '@ns'
 import {ramManagerIdentifier} from "/daemons/ram/RamManagerDaemon";
-import {simplex, IpcMessagingClient} from "/lib/ipc/messaging/IpcMessagingClient";
-import {Allotments, RamMessageType, RamReservation} from "/daemons/ram/RamMessageType";
+import {IpcMessagingClient, simplex} from "/lib/ipc/messaging/IpcMessagingClient";
+import {Allotments, RamMessageType, ReservationRequest, ReservationsByKey} from "/daemons/ram/RamMessageType";
 import {RamManagerEndpoints} from "/daemons/ram/RamManagerEndpoints";
 import * as enums from "/lib/enums";
 
@@ -17,20 +17,14 @@ export class IpcRamClient {
 		this._client = client
 	}
 
-	async reserveThreads(threads: number, time: number): Promise<Allotments> {
+	async reserveThreads(...reservations: ReservationRequest[]): Promise<ReservationsByKey> {
 		await this._client.get(RamManagerEndpoints.releaseReservation)
 
-		const response = await this._client.post(RamManagerEndpoints.requestReservation, {
-			requestedRam: threads * enums.ScriptCost.launchpadScripts,
-			allocationSize: enums.ScriptCost.launchpadScripts,
-			time: time
-		} as RamReservation)
+		const response = await this._client.post(RamManagerEndpoints.requestReservation, reservations)
+		const data = response.messageData as ReservationsByKey
 
-		const data = response.messageData as Allotments
-		const entries = Object.entries(data).map((entry) => [entry[0], this.mapRamToThreads(entry[1])])
-
-		if (entries.length !== 0) {
-			return Object.fromEntries(entries)
+		if (Object.entries(data).length !== 0) {
+			return data
 		} else {
 			throw new Error('Reservation got rejected')
 		}
@@ -41,9 +35,7 @@ export class IpcRamClient {
 	}
 
 	async lookupThreads(): Promise<Allotments> {
-		const response = await this._client.post(RamManagerEndpoints.lookupFreeRamByAllotments, {
-			allocationSize: enums.ScriptCost.launchpadScripts,
-		})
+		const response = await this._client.get(RamManagerEndpoints.lookupFreeRamByAllotments, enums.ScriptCost.weaken)
 
 		const data = response.messageData as Allotments
 		const entries = Object.entries(data).map((entry) => [entry[0], this.mapRamToThreads(entry[1])])
@@ -60,7 +52,12 @@ export class IpcRamClient {
 		return Object.values(data).reduce((a, b) => a + b)
 	}
 
+	async lookupReservations(): Promise<ReservationsByKey> {
+		const response = await this._client.get(RamManagerEndpoints.lookupReservations)
+		return response.messageData as ReservationsByKey
+	}
+
 	mapRamToThreads(ram: number): number {
-		return Math.floor(ram / enums.ScriptCost.launchpadScripts)
+		return Math.floor(ram / enums.ScriptCost.weaken)
 	}
 }

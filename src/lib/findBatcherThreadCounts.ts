@@ -1,14 +1,8 @@
 import {NS, Player, Server} from '@ns'
 import * as enums from 'lib/enums'
 
-export function findBatcherThreadCounts(
-	ns: NS,
-	percentage: number,
-	growThreadsSuggestion: number,
-	player: Player,
-	target: Server,
-	cores: number
-): HGWThreads {
+export function findBatcherThreadCounts(ns: NS, percentage: number, growThreadsSuggestion: number,
+                                        player: Player, target: Server, cores: number): HGWThreads {
 	const mockServer = populateMockServer(target, ns.formulas.mockServer())
 
 	// hack
@@ -59,33 +53,24 @@ function populateMockServer(original: Server, mock: Server): Server {
 	return mock
 }
 
-function findGrowThreadCount(
-	ns: NS,
-	targetPercentage: number,
-	growThreadsSuggestion: number,
-	player: Player,
-	server: Server,
-	cores: number
-): number {
+function findGrowThreadCount(ns: NS, targetPercentage: number, growThreadsSuggestion: number,
+                             player: Player, server: Server, cores: number): number {
 	// one thread is more than needed
 	if (ns.formulas.hacking.growPercent(server, 1, player, cores) > targetPercentage) {
 		return 1
 	}
 
-	const high = searchHigh(ns, targetPercentage, growThreadsSuggestion - 50, 100, player, server, cores)
-	const low = searchLow(ns, targetPercentage, high, 100, player, server, cores)
-	return searchHigh(ns, targetPercentage, low, 1, player, server, cores)
+	const startLow = growThreadsSuggestion - 50
+	const searchImprecise = 100
+	const searchPrecise = 1
+
+	const high = searchHigh(ns, targetPercentage, startLow, searchImprecise, player, server, cores)
+	const low = searchLow(ns, targetPercentage, high, searchImprecise, player, server, cores)
+	return searchHigh(ns, targetPercentage, low, searchPrecise, player, server, cores)
 }
 
-function searchHigh(
-	ns: NS,
-	targetPercentage: number,
-	threads: number,
-	increase: number,
-	player: Player,
-	server: Server,
-	cores: number
-): number {
+function searchHigh(ns: NS, targetPercentage: number, threads: number, increase: number,
+                    player: Player, server: Server, cores: number): number {
 	const percent = ns.formulas.hacking.growPercent(server, threads, player, cores)
 	if (percent > targetPercentage) {
 		return threads
@@ -94,15 +79,8 @@ function searchHigh(
 	}
 }
 
-function searchLow(
-	ns: NS,
-	targetPercentage: number,
-	threads: number,
-	decrease: number,
-	player: Player,
-	server: Server,
-	cores: number
-): number {
+function searchLow(ns: NS, targetPercentage: number, threads: number, decrease: number,
+                   player: Player, server: Server, cores: number): number {
 	const percent = ns.formulas.hacking.growPercent(server, threads, player, cores)
 	if (percent < targetPercentage) {
 		return threads
