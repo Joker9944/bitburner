@@ -3,12 +3,11 @@ import {IdentifierLogger, LogType} from '/lib/logging/Logger'
 import {Toaster} from '/lib/logging/Toaster'
 import {HGWFormulasCalculator} from '/lib/HGWFormulasCalculator'
 import {createRamClient, IpcRamClient} from '/daemons/ram/IpcRamClient'
-import {calculateTotalTickets} from "/daemons/ram/RamMessageType";
-import {execReservations} from "/daemons/ram/execReservations";
-import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient";
-import {Bounds} from "/daemons/cnc/Bounds";
-import {getNetNode} from '/lib/NetNode'
-import {runningHackingScripts} from "/lib/runningHackingScripts";
+import {calculateTotalTickets} from "/daemons/ram/RamMessageType"
+import {execReservations} from "/daemons/ram/execReservations"
+import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient"
+import {Bounds} from "/daemons/cnc/Bounds"
+import {runningHackingScripts} from "/lib/runningHackingScripts"
 import * as enums from '/lib/enums'
 
 const identifierPrefix = 'batcher-'
@@ -47,8 +46,7 @@ class Batcher {
 		this._logger = new IdentifierLogger(ns)
 		this._toaster = new Toaster(ns)
 
-		const targetNode = getNetNode(ns, targetServerHostname)
-		this._calculator = new HGWFormulasCalculator(ns, targetNode,
+		this._calculator = new HGWFormulasCalculator(ns, targetServerHostname,
 			maxHackPercentage, hackPercentageSuggestion, growThreadsSuggestion)
 
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
@@ -64,10 +62,10 @@ class Batcher {
 		while (true) {
 			const now = new Date().getTime()
 			if (now > lastRefresh + refreshPeriod) {
-				const data = await this._broadcastClient.get()
-				this._calculator.maxHackPercentage = data.maxHackPercentage
+				const bounds = await this._broadcastClient.get()
+				this._calculator.maxHackPercentage = bounds.maxHackPercentage
 				maxThreads = await this.determineMaxThreads()
-				this._logger.info(LogType.log, batch, 'Max threads: %s, Max hack%%: %s',
+				this._logger.info(LogType.log, batch, ' Max: T %s / H%% %s',
 					maxThreads, this._ns.nFormat(this._calculator.maxHackPercentage, enums.Format.percentage))
 				lastRefresh = now
 			}
@@ -89,17 +87,32 @@ class Batcher {
 				name: 'weaken',
 				tickets: calculatedThreads.weaken,
 				allocationSize: enums.ScriptCost.weaken,
-				duration: wait
+				duration: wait,
+				affinity: {
+					hostnames: ['home'],
+					anti: false,
+					hard: this._calculator.ownsAdditionalCores()
+				}
 			}, {
 				name: 'grow',
 				tickets: calculatedThreads.grow,
 				allocationSize: enums.ScriptCost.grow,
-				duration: wait
+				duration: wait,
+				affinity: {
+					hostnames: ['home'],
+					anti: false,
+					hard: this._calculator.ownsAdditionalCores()
+				}
 			}, {
 				name: 'hack',
 				tickets: calculatedThreads.hack,
 				allocationSize: enums.ScriptCost.hack,
-				duration: wait
+				duration: wait,
+				affinity: {
+					hostnames: ['home'],
+					anti: true,
+					hard: false
+				}
 			})
 			const reservedThreadsTotal = calculateTotalTickets(Object.values(reservations).flat())
 
@@ -125,12 +138,13 @@ class Batcher {
 				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
 
-			this._logger.info(LogType.log, batch, 'Hack: %s, Grow: %s, Weaken: %s, Total: %s, Reserved: %s',
+			this._logger.info(LogType.log, batch, 'Calc: H %s / G %s / W %s / T %s / H%% %s',
 				calculatedThreads.hack, calculatedThreads.grow, calculatedThreads.weaken,
-				calculatedThreads.total(), reservedThreadsTotal
+				calculatedThreads.total(), this._ns.nFormat(hackPercentage, enums.Format.percentage)
 			)
-			this._logger.info(LogType.log, batch, 'Hack%%: %s',
-				this._ns.nFormat(hackPercentage, enums.Format.percentage)
+			this._logger.info(LogType.log, batch, ' Acc: H %s / G %s / W %s / T %s / R %s',
+				startedThreadsHack, startedThreadsGrow, startedThreadsWeaken,
+				startedThreadsTotal, reservedThreadsTotal
 			)
 			this._logger.info(LogType.log, batch, 'Duration %s', this._ns.tFormat(wait, true))
 			await this._ns.sleep(wait)

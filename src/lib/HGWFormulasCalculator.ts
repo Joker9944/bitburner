@@ -2,25 +2,26 @@ import {NS, Player} from '@ns'
 import {NetNode} from 'lib/NetNode'
 import {findBatcherHackingPercentage} from 'lib/findBatcherHackingPercentage'
 import {findBatcherThreadCounts, HGWThreads} from 'lib/findBatcherThreadCounts'
+import {getNetNode} from '/lib/NetNode'
 
 export class HGWFormulasCalculator {
+	homeNode: NetNode
 	targetNode: NetNode
 	player: Player
-	cores: number
 	maxHackPercentage: number
 	private readonly _ns: NS
 	private _hackPercentageSuggestion: number
 	private _growThreadsSuggestion: number
 
-	constructor(ns: NS, targetNode: NetNode, maxHackPercentage: number, hackPercentageSuggestion: number, growThreadsSuggestion: number) {
+	constructor(ns: NS, targetServerHostname: string, maxHackPercentage: number, hackPercentageSuggestion: number, growThreadsSuggestion: number) {
 		this._ns = ns
 
 		this._growThreadsSuggestion = growThreadsSuggestion
 		this._hackPercentageSuggestion = hackPercentageSuggestion
 
-		this.targetNode = targetNode
+		this.homeNode = getNetNode(ns, 'home')
+		this.targetNode = getNetNode(ns, targetServerHostname)
 		this.player = ns.getPlayer()
-		this.cores = ns.getServer('home').cpuCores
 
 		this.maxHackPercentage = maxHackPercentage
 	}
@@ -34,7 +35,7 @@ export class HGWFormulasCalculator {
 			this._growThreadsSuggestion,
 			this.player,
 			this.targetNode.server,
-			this.cores
+			this.homeNode.server.cpuCores
 		)
 		this._hackPercentageSuggestion = percentage
 		return percentage
@@ -47,7 +48,7 @@ export class HGWFormulasCalculator {
 			this._growThreadsSuggestion,
 			this.player,
 			this.targetNode.server,
-			this.cores
+			this.homeNode.server.cpuCores
 		)
 		this._growThreadsSuggestion = threads.grow
 		return threads
@@ -65,10 +66,12 @@ export class HGWFormulasCalculator {
 		].reduce((a, b) => Math.max(a, b))
 	}
 
+	ownsAdditionalCores(): boolean {
+		return this.homeNode.server.cpuCores > 1
+	}
+
 	refresh(): void {
+		this.homeNode.refresh()
 		this.targetNode.refresh()
-		this.player = this._ns.getPlayer()
-		// TODO this is ugly
-		this.cores = this._ns.getServer('home').cpuCores
 	}
 }

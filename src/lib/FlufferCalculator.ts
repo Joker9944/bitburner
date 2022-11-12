@@ -1,17 +1,20 @@
 import {NetNode} from "/lib/NetNode";
 import {NS, Player} from "@ns";
+import {getNetNode} from '/lib/NetNode'
 
 
 export class FlufferCalculator {
+	homeNode: NetNode
 	targetNode: NetNode
 	player: Player
 	cores: number
 	private readonly _ns: NS
 
-	constructor(ns: NS, targetNode: NetNode) {
+	constructor(ns: NS, targetServerHostname: string) {
 		this._ns = ns
 
-		this.targetNode = targetNode
+		this.homeNode = getNetNode(ns, 'home')
+		this.targetNode = getNetNode(ns, targetServerHostname)
 		this.player = ns.getPlayer()
 		this.cores = ns.getServer('home').cpuCores
 	}
@@ -36,10 +39,12 @@ export class FlufferCalculator {
 		].reduce((a, b) => Math.max(a, b))
 	}
 
+	ownsAdditionalCores(): boolean {
+		return this.homeNode.server.cpuCores > 1
+	}
+
 	refresh(): void {
 		this.targetNode.refresh()
 		this.player = this._ns.getPlayer()
-		// TODO this is ugly
-		this.cores = this._ns.getServer('home').cpuCores
 	}
 }

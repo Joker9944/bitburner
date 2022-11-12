@@ -1,15 +1,14 @@
 import {NS} from '@ns'
-import {IdentifierLogger, LogType} from "/lib/logging/Logger";
-import {Toaster} from "/lib/logging/Toaster";
-import {FlufferCalculator} from "/lib/FlufferCalculator";
-import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient";
-import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient";
-import {Bounds} from "/daemons/cnc/Bounds";
-import {getNetNode} from "/lib/NetNode";
-import {runningHackingScripts} from "/lib/runningHackingScripts";
-import {execReservations} from "/daemons/ram/execReservations";
-import {calculateTotalTickets} from "/daemons/ram/RamMessageType";
-import * as enums from "/lib/enums";
+import {IdentifierLogger, LogType} from "/lib/logging/Logger"
+import {Toaster} from "/lib/logging/Toaster"
+import {FlufferCalculator} from "/lib/FlufferCalculator"
+import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient"
+import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient"
+import {Bounds} from "/daemons/cnc/Bounds"
+import {runningHackingScripts} from "/lib/runningHackingScripts"
+import {execReservations} from "/daemons/ram/execReservations"
+import {calculateTotalTickets} from "/daemons/ram/RamMessageType"
+import * as enums from "/lib/enums"
 
 const identifierPrefix = 'fluffer-'
 
@@ -38,8 +37,7 @@ class Fluffer {
 		this._logger = new IdentifierLogger(ns)
 		this._toaster = new Toaster(ns)
 
-		const targetNode = getNetNode(ns, targetServerHostname)
-		this._calculator = new FlufferCalculator(ns, targetNode)
+		this._calculator = new FlufferCalculator(ns, targetServerHostname)
 
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
 		this._broadcastClient = createBroadcastClient(ns, enums.PortIndex.cncBroadcasting)
@@ -67,7 +65,12 @@ class Fluffer {
 				name: 'weaken',
 				tickets: calculatedThreads,
 				allocationSize: enums.ScriptCost.weaken,
-				duration: wait
+				duration: wait,
+				affinity: {
+					hostnames: ['home'],
+					anti: false,
+					hard: this._calculator.ownsAdditionalCores()
+				}
 			})).weaken
 			const reservedThreads = calculateTotalTickets(reservation)
 
@@ -93,7 +96,7 @@ class Fluffer {
 			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Excepted outcome %s/%s',
 				this._ns.nFormat(Math.max(exceptedSecurity, 0), enums.Format.security),
 				100 - this._calculator.targetNode.server.minDifficulty)
-			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Weaken: %s, Reserved: %s',
+			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'W %s / R %s',
 				calculatedThreads, reservedThreads)
 			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Duration %s',
 				this._ns.tFormat(wait, true))
@@ -125,12 +128,22 @@ class Fluffer {
 				name: 'weaken',
 				tickets: calculatedThreadsWeaken,
 				allocationSize: enums.ScriptCost.weaken,
-				duration: wait
+				duration: wait,
+				affinity: {
+					hostnames: ['home'],
+					anti: false,
+					hard: this._calculator.ownsAdditionalCores()
+				}
 			}, {
 				name: 'grow',
 				tickets: calculatedThreadsGrow,
 				allocationSize: enums.ScriptCost.grow,
-				duration: wait
+				duration: wait,
+				affinity: {
+					hostnames: ['home'],
+					anti: false,
+					hard: false
+				}
 			})
 			const reservedThreadsTotal = calculateTotalTickets(Object.values(reservations).flat())
 
@@ -156,7 +169,7 @@ class Fluffer {
 				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
 
-			this._logger.info(LogType.log, 'grow-' + growBatch, 'Grow: %s, Weaken: %s, Reserved: %s',
+			this._logger.info(LogType.log, 'grow-' + growBatch, 'G %s / W %s / R %s',
 				calculatedThreadsGrow, calculatedThreadsWeaken, reservedThreadsTotal)
 			this._logger.info(LogType.log, 'grow-' + growBatch, 'Duration %s',
 				this._ns.tFormat(wait, true))

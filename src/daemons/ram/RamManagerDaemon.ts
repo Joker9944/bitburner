@@ -1,4 +1,4 @@
-import {NS} from '@ns'
+import {NS, ProcessInfo} from '@ns'
 import {IdentifierLogger, LogType} from '/lib/logging/Logger'
 import {IpcMessagingServer, RequestHandler, simplex} from "/lib/ipc/messaging/IpcMessagingServer";
 import {Allotments, RamMessageType, ReservationRequest, Reservation, ReservationsByKey} from "/daemons/ram/RamMessageType";
@@ -16,7 +16,6 @@ export async function main(ns: NS): Promise<void> {
 	await new RamManagerDaemon(ns).main()
 }
 
-// TODO implement preferred hosts
 class RamManagerDaemon {
 	private readonly _ns: NS
 	private readonly _logger: IdentifierLogger
@@ -63,7 +62,7 @@ class RamManagerDaemon {
 				const reservationRequests = data as ReservationRequest[]
 				const reservations = {} as ReservationsByKey
 				reservationRequests.forEach(request => {
-					const allotments = this.calculateRamAllocations(request.tickets * request.allocationSize, request.allocationSize)
+					const allotments = this.calculateRamAllocations(request)
 					const allotmentEntries = Object.entries(allotments)
 					if (allotmentEntries.length > 0) {
 						reservations[request.name] = []
@@ -118,48 +117,94 @@ class RamManagerDaemon {
 
 	updateContinuousReservations(): void {
 		this.releaseReservations(continuousReservationsOwner)
-		const hosts = Object.keys(this._ramTable).map((hostname) => {
+		const processesByHost = Object.keys(this._ramTable).map((hostname) => {
 			const processes = this._ns.ps(hostname).filter(process => process.filename.startsWith('/daemons/') || process.filename.startsWith('/bin/'))
 			return {
 				hostname: hostname,
 				processes: processes,
 			}
 		})
-		hosts.forEach(entry => {
-			entry.processes.forEach((process) => {
-				const cost = this._ns.getScriptRam(process.filename, entry.hostname) * 1000
-				this.createReservation(continuousReservationsOwner, entry.hostname, cost, {
-					name: process.filename,
+		processesByHost.forEach(byHostEntry => {
+			const processByFilename = Array.from(this.groupByFilename(byHostEntry.processes))
+			processByFilename.forEach(byFilenameEntry => {
+				const cost = this._ns.getScriptRam(byFilenameEntry.filename, byHostEntry.hostname) * 1000
+				this.createReservation(continuousReservationsOwner, byHostEntry.hostname, cost * byFilenameEntry.processes.length, {
+					name: byFilenameEntry.filename,
 					allocationSize: cost,
-					tickets: 1
+					tickets: byFilenameEntry.processes.length,
 				})
 			})
 		})
 	}
 
-	calculateRamAllocations(requestedRam: number, allocationSize: number, ignoredReservationOwner?: string): Allotments {
-		const ramTableKeys = Object.keys(this._ramTable)
+	* groupByFilename(list: ProcessInfo[]) {
+		const groups = new Map<string, ProcessInfo[]>();
+		for (const item of list) {
+			const group = groups.get(item.filename) ?? []
+			group.push(item)
+			groups.set(item.filename, group)
+		}
+		for (const [filename, processes] of groups) {
+			yield {filename, processes}
+		}
+	}
+
+	calculateRamAllocations(request: ReservationRequest): Allotments {
+		const requestedRam = request.allocationSize * request.tickets
+		let ramTableKeys = Object.keys(this._ramTable)
+
+		if (request.affinity !== undefined) {
+			if (request.affinity.hard && request.affinity.anti) {
+				ramTableKeys = ramTableKeys.filter(hostname => !request.affinity?.hostnames.includes(hostname))
+			} else if (request.affinity.hard && !request.affinity.anti) {
+				ramTableKeys = ramTableKeys.filter(hostname => request.affinity?.hostnames.includes(hostname))
+			} else if (!request.affinity.hard && request.affinity.anti) {
+				ramTableKeys = ramTableKeys.sort((a, b) => {
+					if (request.affinity?.hostnames.includes(a) && request.affinity?.hostnames.includes(b)) {
+						return 0
+					} else if (request.affinity?.hostnames.includes(a)) {
+						return 1
+					} else if (request.affinity?.hostnames.includes(b)) {
+						return -1
+					} else {
+						return 0
+					}
+				})
+			} else if (!request.affinity.hard && !request.affinity.anti) {
+				ramTableKeys = ramTableKeys.sort((a, b) => {
+					if (request.affinity?.hostnames.includes(a) && request.affinity?.hostnames.includes(b)) {
+						return 0
+					} else if (request.affinity?.hostnames.includes(a)) {
+						return -1
+					} else if (request.affinity?.hostnames.includes(b)) {
+						return 1
+					} else {
+						return 0
+					}
+				})
+			}
+		}
 
 		const ramPerServer: Allotments = {}
 		let totalRam = 0
 		for (let i = 0; i < ramTableKeys.length && totalRam < requestedRam; i++) {
 			const hostname = ramTableKeys[i]
 
-			const freeRam = this.calculateUnreservedRam(hostname, ignoredReservationOwner)
+			const freeRam = this.calculateUnreservedRam(hostname)
 			if (freeRam <= 0) {
 				continue
 			}
 
-			let availableAllotments = Math.floor(freeRam / allocationSize)
+			let availableAllotments = Math.floor(freeRam / request.allocationSize)
 			if (availableAllotments <= 0) {
 				continue
 			}
 
-			if (availableAllotments * allocationSize > requestedRam - totalRam) {
-				availableAllotments = Math.floor((requestedRam - totalRam) / allocationSize)
+			if (availableAllotments * request.allocationSize > requestedRam - totalRam) {
+				availableAllotments = Math.floor((requestedRam - totalRam) / request.allocationSize)
 			}
 
-			const allotment = availableAllotments * allocationSize
+			const allotment = availableAllotments * request.allocationSize
 			ramPerServer[hostname] = allotment
 			totalRam += allotment
 		}
@@ -216,6 +261,10 @@ class RamManagerDaemon {
 			hostname: hostname,
 			ramMB: ramMB,
 			allocationSize: request.allocationSize
+		}
+
+		if (request.affinity !== undefined) {
+			reservation.affinity = request.affinity
 		}
 
 		if (request.duration !== undefined) {

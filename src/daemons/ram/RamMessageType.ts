@@ -10,7 +10,14 @@ export type ReservationRequest = {
 	name: string
 	tickets: number
 	allocationSize: number
+	affinity?: Affinity
 	duration?: number
+}
+
+export type Affinity = {
+	anti: boolean
+	hard: boolean
+	hostnames: string[]
 }
 
 export type ReservationsByKey = {
@@ -23,6 +30,7 @@ export type Reservation = {
 	hostname: string
 	ramMB: number
 	allocationSize: number
+	affinity?: Affinity
 	timeout?: number
 }
 
