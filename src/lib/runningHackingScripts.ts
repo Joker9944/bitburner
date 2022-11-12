@@ -22,9 +22,8 @@ export async function runningHackingScripts(ns: NS, targetHostname: string): Pro
 			hostname: node.server.hostname,
 			processes: processes,
 		}
-	})
+	}).filter(entry => entry.processes.length > 0)
 
-	// TODO why does this always appear?
 	if (processesByHostname.length > 0) {
 		logger.info(LogType.log, 'Waiting for running hacking scripts to conclude')
 	}

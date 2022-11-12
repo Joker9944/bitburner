@@ -1,5 +1,10 @@
-import { NS } from '@ns'
-import { getNetNodes } from '/lib/NetNode'
+import {AutocompleteData, NS} from '@ns'
+import {getNetNodes} from '/lib/NetNode'
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): unknown {
+	return [...data.servers];
+}
 
 export async function main(ns: NS): Promise<void> {
 	const args = ns.flags([])

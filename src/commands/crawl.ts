@@ -1,5 +1,5 @@
-import { NS, Server } from '@ns'
-import { getNetTree, NetNode } from 'lib/NetNode'
+import {AutocompleteData, NS, Server} from '@ns'
+import {getNetTree, NetNode} from 'lib/NetNode'
 import * as enums from 'lib/enums'
 
 const headers = {
@@ -9,6 +9,11 @@ const headers = {
 }
 
 const portBreakerFiles = Object.values(enums.PortBreakerFiles)
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): unknown {
+	return [...data.servers, '--max-depth', '--watch'];
+}
 
 export async function main(ns: NS): Promise<void> {
 	const args = ns.flags([
@@ -27,6 +32,7 @@ export async function main(ns: NS): Promise<void> {
 	if (watch) {
 		const netTree = getNetTree(ns, origin, maxDepth)
 		const netNodes = netTree.flat()
+		// noinspection InfiniteLoopJS
 		while (true) {
 			travelNetTree(ns, netTree, hackingLevel, ownedPortBreakersCount)
 			await ns.sleep(2000)

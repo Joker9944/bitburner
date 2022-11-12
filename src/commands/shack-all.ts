@@ -12,6 +12,6 @@ export async function main(ns: NS): Promise<void> {
 		.filter((node) => node.server.serverGrowth > 1)
 		.filter((node) => !processes.includes(node.server.hostname))
 		.forEach((node) => {
-			ns.exec(enums.Commands.shack, execServerHostname, 1, '--max-threads', '1000', node.server.hostname)
+			ns.exec(enums.Commands.shack, execServerHostname, 1, node.server.hostname)
 		})
 }

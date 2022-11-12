@@ -1,5 +1,5 @@
-import { InfiltrationLocation, NS } from '@ns'
-import { Logger, LogType } from 'lib/logging/Logger'
+import {AutocompleteData, InfiltrationLocation, NS} from '@ns'
+import {Logger, LogType} from 'lib/logging/Logger'
 import * as enums from 'lib/enums'
 
 const difficultyMap: Record<string, number> = {
@@ -9,6 +9,11 @@ const difficultyMap: Record<string, number> = {
 }
 
 // TODO test this
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): unknown {
+	return ['--difficulty', '--sort', '--limit'];
+}
 
 export async function main(ns: NS): Promise<void> {
 	const logger = new Logger(ns)
@@ -113,5 +118,5 @@ function extractInfiltrationData(
 ): Record<string, number> {
 	return (infiltration.location as unknown as Record<string, unknown>)[
 		'infiltrationData'
-	] as Record<string, number>
+		] as Record<string, number>
 }

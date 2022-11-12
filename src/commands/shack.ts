@@ -1,8 +1,13 @@
-import {NS} from '@ns'
+import {AutocompleteData, NS} from '@ns'
 import {getNetNode} from 'lib/NetNode'
 import {Logger, LogType} from 'lib/logging/Logger'
 import {runningHackingScripts} from 'lib/runningHackingScripts'
 import * as enums from 'lib/enums'
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): unknown {
+	return [...data.servers, '--max-hack-percentage'];
+}
 
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog('ALL')
