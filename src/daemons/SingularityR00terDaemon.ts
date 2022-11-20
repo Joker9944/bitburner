@@ -1,5 +1,5 @@
 import {NS} from '@ns'
-import {IdentifierLogger, LogType} from 'lib/logging/Logger'
+import {Logger} from 'lib/logging/Logger'
 import {Toaster} from 'lib/logging/Toaster'
 import {getNetNodes, NetNode} from 'lib/NetNode'
 import * as enums from 'lib/enums'
@@ -16,7 +16,7 @@ export async function main(ns: NS): Promise<void> {
 export class SingularityR00terDaemon {
 	readonly ns: NS
 
-	readonly logger: IdentifierLogger
+	readonly logger: Logger
 	readonly toaster: Toaster
 
 	readonly execServerHostname: string
@@ -27,7 +27,7 @@ export class SingularityR00terDaemon {
 	constructor(ns: NS) {
 		this.ns = ns
 
-		this.logger = new IdentifierLogger(ns)
+		this.logger = new Logger(ns)
 		this.toaster = new Toaster(ns)
 
 		this.execServerHostname = ns.getHostname()
@@ -45,7 +45,9 @@ export class SingularityR00terDaemon {
 			const hackableServers = hackingSkillsMet.filter(node => ownedPortBreakersCount >= node.server.numOpenPortsRequired)
 
 			if (hackingSkillsMet.length > hackableServers.length) {
-				this.logger.warn(LogType.log, 'r00ter', 'Could root %s server(s) with more port breakers', hackingSkillsMet.length)
+				this.logger.warn()
+					.withIdentifier('Could root %s server(s) with more port breakers')
+					.print(hackingSkillsMet.length)
 			}
 
 			if (hackableServers.length > 0) {
@@ -53,18 +55,24 @@ export class SingularityR00terDaemon {
 					this.root(node)
 					this.copyLaunchpad(node)
 				}
-				this.ns.tprintf('Installing backdoors on %s servers', hackableServers.length)
+				this.logger.print()
+					.terminal()
+					.withFormat('Installing backdoors on %s servers')
+					.print(hackableServers.length)
 				for (const node of hackableServers) {
 					await this.backdoor(node)
 				}
-				this.ns.tprintf('Finished installing backdoors')
+				this.logger.print()
+					.terminal()
+					.print('Finished installing backdoors')
 			} else {
 				await this.ns.sleep(10000)
 			}
 			this.net.forEach((node) => node.refresh())
 		}
 
-		this.logger.info(LogType.log, 'r00ter', 'Rooted all servers')
+		this.logger.info()
+			.print('Rooted all servers')
 		this.toaster.success('Rooted all servers', 'r00ter')
 	}
 
@@ -91,7 +99,10 @@ export class SingularityR00terDaemon {
 		}
 		this.ns.nuke(hostname)
 		this.rootedServersCount++
-		this.logger.info(LogType.log, hostname, 'Rooted')
+
+		this.logger.info()
+			.withIdentifier(hostname)
+			.print('Rooted')
 		this.toaster.info('Rooted', hostname)
 	}
 
@@ -106,7 +117,9 @@ export class SingularityR00terDaemon {
 		await this.ns.singularity.installBackdoor()
 		this.ns.singularity.connect(this.execServerHostname)
 		const hostname = node.server.hostname
-		this.logger.info(LogType.log, hostname, 'Installed backdoor')
+		this.logger.info()
+			.withIdentifier(hostname)
+			.print('Installed backdoor')
 		this.toaster.info('Installed backdoor', hostname)
 	}
 }

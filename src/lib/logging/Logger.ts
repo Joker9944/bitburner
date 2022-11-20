@@ -2,101 +2,120 @@ import {NS} from '@ns'
 import {Severity} from 'lib/logging/Severity'
 
 export class Logger {
-	ns: NS
+	private readonly _ns: NS
 
 	constructor(ns: NS) {
-		this.ns = ns
+		this._ns = ns
 	}
 
-	info(type: LogType, format: string, ...args: unknown[]): void {
-		this.print(type, Severity.info + ': ' + format, ...args)
+	info(): LogEntry {
+		return new LogEntry(this._ns).info()
 	}
 
-	warn(type: LogType, format: string, ...args: unknown[]): void {
-		this.print(type, Severity.warning + ': ' + format, ...args)
+	warn(): LogEntry {
+		return new LogEntry(this._ns).warn()
 	}
 
-	error(type: LogType, format: string, ...args: unknown[]): void {
-		this.print(type, Severity.error + ': ' + format, ...args)
+	error(): LogEntry {
+		return new LogEntry(this._ns).error()
 	}
 
-	success(type: LogType, format: string, ...args: unknown[]): void {
-		this.print(type, Severity.success + ': ' + format, ...args)
+	success(): LogEntry {
+		return new LogEntry(this._ns).success()
 	}
 
-	print(type: LogType, format: string, ...args: unknown[]): void {
-		switch (type) {
-			case LogType.log:
-				this.ns.printf(format, ...args)
+	print(): LogEntry {
+		return new LogEntry(this._ns)
+	}
+}
+
+export class LogEntry {
+	private readonly _ns: NS
+	private type: LogType = LogType.log
+	private severity?: Severity
+	private format?: string
+	private identifier?: unknown
+
+	constructor(ns: NS) {
+		this._ns = ns
+	}
+
+	terminal(): LogEntry {
+		this.type = LogType.terminal
+		return this
+	}
+
+	log(): LogEntry {
+		this.type = LogType.log
+		return this
+	}
+
+	info(): LogEntry {
+		this.severity = Severity.info
+		return this
+	}
+
+	warn(): LogEntry {
+		this.severity = Severity.warning
+		return this
+	}
+
+	error(): LogEntry {
+		this.severity = Severity.error
+		return this
+	}
+
+	success(): LogEntry {
+		this.severity = Severity.success
+		return this
+	}
+
+	withFormat(format: string): LogEntry {
+		this.format = format
+		return this
+	}
+
+	withIdentifier(identifier: unknown): LogEntry {
+		this.identifier = identifier
+		return this
+	}
+
+	print(...args: unknown[]): void {
+		let format = this.format === undefined ? defaultFormat(args) : this.format
+		if (this.identifier !== undefined && this.severity !== undefined) {
+			format = '%s [%s]: ' + format
+			args.unshift(this.identifier)
+			args.unshift(this.severity)
+		} else if (this.identifier !== undefined) {
+			format = '[%s]: ' + format
+			args.unshift(this.identifier)
+		} else if (this.severity !== undefined) {
+			format = '%s: ' + format
+			args.unshift(this.severity)
+		}
+		switch (this.type) {
+			case LogType.terminal: {
+				this._ns.tprintf(format, ...args)
 				break
-			case LogType.terminal:
-				this.ns.tprintf(format, ...args)
-				break
+			}
+			case LogType.log: {
+				this._ns.printf(format, ...args)
+			}
 		}
 	}
 }
 
-export class IdentifierLogger {
-	ns: NS
-	private _logger: Logger
-
-	constructor(ns: NS) {
-		this.ns = ns
-		this._logger = new Logger(ns)
+function defaultFormat(...args: unknown[]) {
+	const format = []
+	for (let i = 0; i < args.length; i++) {
+		format.push('%s')
 	}
-
-	info(
-		type: LogType,
-		identifier: unknown,
-		format: string,
-		...args: unknown[]
-	): void {
-		args.unshift(identifier)
-		this._logger.print(type, Severity.info + ' [%s]: ' + format, ...args)
-	}
-
-	warn(
-		type: LogType,
-		identifier: unknown,
-		format: string,
-		...args: unknown[]
-	): void {
-		args.unshift(identifier)
-		this._logger.print(type, Severity.warning + ' [%s]: ' + format, ...args)
-	}
-
-	error(
-		type: LogType,
-		identifier: unknown,
-		format: string,
-		...args: unknown[]
-	): void {
-		args.unshift(identifier)
-		this._logger.print(type, Severity.error + ' [%s]: ' + format, ...args)
-	}
-
-	success(
-		type: LogType,
-		identifier: unknown,
-		format: string,
-		...args: unknown[]
-	): void {
-		args.unshift(identifier)
-		this._logger.print(type, Severity.success + ' [%s]: ' + format, ...args)
-	}
-
-	print(
-		type: LogType,
-		identifier: unknown,
-		format: string,
-		...args: unknown[]
-	): void {
-		args.unshift(identifier)
-		this._logger.print(type, '[%s]: ' + format, ...args)
-	}
+	return format.join(' ')
 }
 
 export enum LogType {
 	terminal,
 	log,
 }
+
+export const {terminal, log} = LogType

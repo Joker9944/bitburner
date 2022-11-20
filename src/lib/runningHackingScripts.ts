@@ -1,5 +1,5 @@
 import {NS} from '@ns'
-import {Logger, LogType} from 'lib/logging/Logger'
+import {Logger} from 'lib/logging/Logger'
 import {getNetNodes} from 'lib/NetNode'
 import * as enums from 'lib/enums'
 
@@ -25,7 +25,8 @@ export async function runningHackingScripts(ns: NS, targetHostname: string): Pro
 	}).filter(entry => entry.processes.length > 0)
 
 	if (processesByHostname.length > 0) {
-		logger.info(LogType.log, 'Waiting for running hacking scripts to conclude')
+		logger.info()
+			.print('Waiting for running hacking scripts to conclude')
 	}
 
 	for (const entry of processesByHostname) {

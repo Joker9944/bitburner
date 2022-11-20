@@ -1,5 +1,5 @@
 import {NS} from "@ns";
-import {Logger, LogType} from 'lib/logging/Logger'
+import {Logger} from 'lib/logging/Logger'
 import {Envelop, IpcPortClient} from "/lib/ipc/IpcPortClient";
 import * as enums from 'lib/enums'
 
@@ -39,7 +39,9 @@ export class PortCleanupDaemon {
 				}
 				const sent = (envelope as Envelop<unknown>).sent
 				if (now > sent + timeout) {
-					this._logger.warn(LogType.log, 'Message in queue for longer than %s seconds %s', timeout / 1000, JSON.stringify(envelope))
+					this._logger.warn()
+						.withFormat('Message in queue for longer than %s seconds %s')
+						.print(timeout / 1000, JSON.stringify(envelope))
 					client.pop()
 				}
 			}

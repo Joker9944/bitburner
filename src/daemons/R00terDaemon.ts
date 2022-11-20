@@ -1,5 +1,5 @@
 import {NS} from '@ns'
-import {Logger, LogType} from 'lib/logging/Logger'
+import {Logger} from 'lib/logging/Logger'
 import {Toaster} from 'lib/logging/Toaster'
 import {getNetNodes} from 'lib/NetNode'
 import * as enums from 'lib/enums'
@@ -51,18 +51,19 @@ export async function main(ns: NS): Promise<void> {
 
 				ns.scp(launchpadScripts, node.server.hostname, 'home')
 
-				logger.info(LogType.log, 'Rooted %s', node.server.hostname)
+				logger.info()
+					.withIdentifier(node.server.hostname)
+					.print('Rooted')
 				toaster.info('Rooted', node.server.hostname)
 
 				if (enums.hackingFactionServers[node.server.hostname] !== undefined) {
-					logger.success(
-						LogType.terminal,
-						'%s can be backdoored to gain access to %s',
-						node.server.hostname,
-						enums.hackingFactionServers[node.server.hostname]
-					)
+					logger.success()
+						.terminal()
+						.withIdentifier(node.server.hostname)
+						.withFormat('Can install backdoor to gain access to %s')
+						.print(enums.hackingFactionServers[node.server.hostname])
 					toaster.success(
-						'Can be backdoored for ' + enums.hackingFactionServers[node.server.hostname],
+						'Can install backdoor to access ' + enums.hackingFactionServers[node.server.hostname],
 						node.server.hostname
 					)
 				}
@@ -73,6 +74,7 @@ export async function main(ns: NS): Promise<void> {
 		netNodes.forEach((node) => node.refresh())
 	}
 
-	logger.info(LogType.log, 'Rooted all servers')
+	logger.info()
+		.print('Rooted all servers')
 	toaster.success('Rooted all servers')
 }

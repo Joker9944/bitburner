@@ -2,9 +2,9 @@ import {NS} from "@ns";
 import {create, IpcBroadcastServer} from "/lib/ipc/broadcast/IpcBroadcastServer";
 import {Bounds} from "/daemons/cnc/Bounds";
 import * as enums from 'lib/enums'
-import {simplex, IpcMessagingServer} from "/lib/ipc/messaging/IpcMessagingServer";
+import {IpcMessagingServer, simplex} from "/lib/ipc/messaging/IpcMessagingServer";
 import {CnCEndpoints} from "/daemons/cnc/CnCEndpoints";
-import {IdentifierLogger, LogType} from "/lib/logging/Logger";
+import {Logger} from "/lib/logging/Logger";
 
 export const cncDaemonIdentifier = 'daemon-cnc'
 export const cncDataFile = '/data/cnc.txt'
@@ -26,14 +26,14 @@ export class CnCBroadcasterDaemon {
 	maxHackPercentage: number
 	maxThreads: number
 	private readonly _ns: NS
-	private readonly _logger: IdentifierLogger
+	private readonly _logger: Logger
 	private readonly _broadcastServer: IpcBroadcastServer<Bounds>
 	private readonly _messagingServer: IpcMessagingServer<Bounds | string>
 
 	constructor(ns: NS, maxHackPercentage: number, maxThreads: number) {
 		this._ns = ns
 
-		this._logger = new IdentifierLogger(ns)
+		this._logger = new Logger(ns)
 
 		this._broadcastServer = create<Bounds>(ns, enums.PortIndex.cncBroadcasting)
 		this._messagingServer = simplex<Bounds | string>(ns, cncDaemonIdentifier, enums.PortIndex.cncMessaging)
@@ -59,7 +59,9 @@ export class CnCBroadcasterDaemon {
 			const handler = await this._messagingServer.listen()
 			switch (handler.request.endpoint) {
 				case CnCEndpoints.get: {
-					this._logger.info(LogType.log, handler.request.messageId, 'Getting bounds')
+					this._logger.info()
+						.withIdentifier(handler.request.messageId)
+						.print('Getting bounds')
 					await handler.respond({
 						maxHackPercentage: this.maxHackPercentage,
 						maxThreads: this.maxThreads,
@@ -68,7 +70,10 @@ export class CnCBroadcasterDaemon {
 				}
 				case CnCEndpoints.set: {
 					const data = handler.request.messageData as Bounds
-					this._logger.info(LogType.log, handler.request.messageId, 'Setting bounds to %s', JSON.stringify(data))
+					this._logger.info()
+						.withIdentifier(handler.request.messageId)
+						.withFormat('Setting bounds to %s')
+						.print(JSON.stringify(data))
 					this.maxHackPercentage = data.maxHackPercentage
 					this.maxThreads = data.maxThreads
 

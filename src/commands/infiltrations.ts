@@ -1,6 +1,6 @@
 import {AutocompleteData, InfiltrationLocation, NS} from '@ns'
-import {Logger, LogType} from 'lib/logging/Logger'
-import * as enums from 'lib/enums'
+import {Logger} from '/lib/logging/Logger'
+import * as enums from '/lib/enums'
 
 const difficultyMap: Record<string, number> = {
 	easy: 1,
@@ -70,34 +70,32 @@ export async function main(ns: NS): Promise<void> {
 			break
 	}
 
-	logger.print(
-		LogType.terminal,
-		'~~~~~~~~~~ Beginning infiltrations ~~~~~~~~~~'
-	)
-	logger.print(LogType.terminal, ' ')
+	logger.print()
+		.terminal()
+		.print('~~~~~~~~~~ Beginning infiltrations ~~~~~~~~~~')
+	logger.print()
+		.terminal()
+		.print(' ')
 	for (let i = 0; i < limit; i++) {
 		const infiltration = infiltrations[i]
 		const infiltrationData = extractInfiltrationData(infiltration)
-		logger.print(
-			LogType.terminal,
-			'%s -> %s',
-			infiltration.location.city,
-			infiltration.location.name
-		)
-		logger.print(
-			LogType.terminal,
-			'Difficulty: %s, Level: %s',
-			determineDifficulty(infiltration.difficulty),
-			infiltrationData['maxClearanceLevel']
-		)
-		logger.print(
-			LogType.terminal,
-			'Reward: %s or %s rep / SoA %s rep',
-			ns.nFormat(infiltration.reward.sellCash, enums.Format.money),
-			ns.nFormat(infiltration.reward.tradeRep, enums.Format.rep),
-			ns.nFormat(infiltration.reward.SoARep, enums.Format.rep)
-		)
-		logger.print(LogType.terminal, ' ')
+		logger.print()
+			.terminal()
+			.withFormat('%s -> %s')
+			.print(infiltration.location.city, infiltration.location.name)
+		logger.print()
+			.terminal()
+			.withFormat('Difficulty: %s, Level: %s')
+			.print(determineDifficulty(infiltration.difficulty), infiltrationData['maxClearanceLevel'])
+		logger.print()
+			.terminal()
+			.withFormat('Reward: %s or %s rep / SoA %s rep')
+			.print(ns.nFormat(infiltration.reward.sellCash, enums.Format.money),
+				ns.nFormat(infiltration.reward.tradeRep, enums.Format.rep),
+				ns.nFormat(infiltration.reward.SoARep, enums.Format.rep))
+		logger.print()
+			.terminal()
+			.print(' ')
 	}
 }
 

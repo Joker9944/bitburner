@@ -1,5 +1,5 @@
 import {NS} from '@ns'
-import {IdentifierLogger, LogType} from "/lib/logging/Logger"
+import {Logger} from "/lib/logging/Logger"
 import {Toaster} from "/lib/logging/Toaster"
 import {FlufferCalculator} from "/lib/FlufferCalculator"
 import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient"
@@ -24,7 +24,7 @@ export async function main(ns: NS): Promise<void> {
 class Fluffer {
 	private readonly _ns: NS
 
-	private readonly _logger: IdentifierLogger
+	private readonly _logger: Logger
 	private readonly _toaster: Toaster
 
 	private readonly _calculator: FlufferCalculator
@@ -34,7 +34,7 @@ class Fluffer {
 	constructor(ns: NS, targetServerHostname: string) {
 		this._ns = ns
 
-		this._logger = new IdentifierLogger(ns)
+		this._logger = new Logger(ns)
 		this._toaster = new Toaster(ns)
 
 		this._calculator = new FlufferCalculator(ns, targetServerHostname)
@@ -53,8 +53,10 @@ class Fluffer {
 
 			let calculatedThreads = this._calculator.calculateNeededWeakenThreads(securityDecrease)
 			if (calculatedThreads > maxThreads) {
-				this._logger.warn(LogType.log, 'weaken-' + weakenBatch, 'Weaken thread count hit limit %s > %s',
-					calculatedThreads, maxThreads)
+				this._logger.warn()
+					.withIdentifier('weaken-' + weakenBatch)
+					.withFormat('Weaken thread count hit limit %s > %s')
+					.print(calculatedThreads, maxThreads)
 				calculatedThreads = maxThreads
 			}
 
@@ -77,37 +79,44 @@ class Fluffer {
 				this._calculator.targetNode.server.hostname);
 
 			if (startedThreads !== calculatedThreads) {
-				this._logger.error(LogType.log, 'weaken-' + weakenBatch,
-					'Started threads do not match calculated total threads %s != %s',
-					startedThreads, calculatedThreads
-				)
+				this._logger.error()
+					.withIdentifier('weaken-' + weakenBatch)
+					.withFormat('Started threads do not match calculated total threads %s != %s')
+					.print(startedThreads, calculatedThreads)
 				this._toaster.error('Started thread mismatch', this._calculator.targetNode.server.hostname)
 			}
 
 			if (startedThreads !== reservedThreads) {
-				this._logger.error(LogType.log, 'weaken-' + weakenBatch,
-					'Started threads do not match reserved threads %s != %s',
-					startedThreads, reservedThreads
-				)
+				this._logger.error()
+					.withIdentifier('weaken-' + weakenBatch)
+					.withFormat('Started threads do not match reserved threads %s != %s')
+					.print(startedThreads, reservedThreads)
 				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
 			const exceptedSecurity = this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty - calculatedThreads * securityDecrease
-			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Excepted outcome %s/%s',
-				this._ns.nFormat(Math.max(exceptedSecurity, 0), enums.Format.security),
-				100 - this._calculator.targetNode.server.minDifficulty)
-			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'W %s / R %s',
-				calculatedThreads, reservedThreads)
-			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Duration %s',
-				this._ns.tFormat(wait, true))
+			this._logger.info()
+				.withIdentifier('weaken-' + weakenBatch)
+				.withFormat('Excepted outcome %s/%s')
+				.print(this._ns.nFormat(Math.max(exceptedSecurity, 0), enums.Format.security),
+					100 - this._calculator.targetNode.server.minDifficulty)
+			this._logger.info()
+				.withIdentifier('weaken-' + weakenBatch)
+				.withFormat('W %s / R %s')
+				.print(calculatedThreads, reservedThreads)
+			this._logger.info()
+				.withIdentifier('weaken-' + weakenBatch)
+				.withFormat('Duration %s')
+				.print(this._ns.tFormat(wait, true))
 
 			await this._ns.sleep(wait)
 
 			this._calculator.refresh()
 
-			this._logger.info(LogType.log, 'weaken-' + weakenBatch, 'Actual outcome: %s/%s',
-				this._ns.nFormat(this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty, enums.Format.security),
-				100 - this._calculator.targetNode.server.minDifficulty
-			)
+			this._logger.info()
+				.withIdentifier('weaken-' + weakenBatch)
+				.withFormat('Actual outcome: %s/%s')
+				.print(this._ns.nFormat(this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty, enums.Format.security),
+					100 - this._calculator.targetNode.server.minDifficulty)
 
 			weakenBatch++
 		}
@@ -153,34 +162,39 @@ class Fluffer {
 			const startedThreadsTotal = startedThreadsWeaken + startedThreadsGrow
 
 			if (startedThreadsTotal !== calculatedTotal) {
-				this._logger.error(LogType.log, 'grow-' + growBatch,
-					'Started threads do not match calculated total threads %s != %s',
-					startedThreadsTotal, calculatedTotal
-				)
+				this._logger.error()
+					.withIdentifier('grow-' + growBatch)
+					.withFormat('Started threads do not match calculated total threads %s != %s')
+					.print(startedThreadsTotal, calculatedTotal)
 				this._toaster.error('Started thread mismatch', this._calculator.targetNode.server.hostname)
 			}
 
 			if (startedThreadsTotal !== reservedThreadsTotal) {
-				this._logger.error(LogType.log, 'grow-' + growBatch,
-					'Started threads do not match reserved threads %s != %s',
-					startedThreadsTotal, reservedThreadsTotal
-				)
+				this._logger.error()
+					.withIdentifier('grow-' + growBatch)
+					.withFormat('Started threads do not match reserved threads %s != %s')
+					.print(startedThreadsTotal, reservedThreadsTotal)
 				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
 
-			this._logger.info(LogType.log, 'grow-' + growBatch, 'G %s / W %s / R %s',
-				calculatedThreadsGrow, calculatedThreadsWeaken, reservedThreadsTotal)
-			this._logger.info(LogType.log, 'grow-' + growBatch, 'Duration %s',
-				this._ns.tFormat(wait, true))
+			this._logger.info()
+				.withIdentifier('grow-' + growBatch)
+				.withFormat('G %s / W %s / R %s')
+				.print(calculatedThreadsGrow, calculatedThreadsWeaken, reservedThreadsTotal)
+			this._logger.info()
+				.withIdentifier('grow-' + growBatch)
+				.withFormat('Duration %s')
+				.print(this._ns.tFormat(wait, true))
 
 			await this._ns.sleep(wait)
 
 			this._calculator.refresh()
 
-			this._logger.info(LogType.log, 'grow-' + growBatch, 'Outcome: %s/%s', // TODO implement outcome prediction
-				this._ns.nFormat(this._calculator.targetNode.server.moneyAvailable, '$0.000a'),
-				this._ns.nFormat(this._calculator.targetNode.server.moneyMax, '$0.000a')
-			)
+			this._logger.info() // TODO implement outcome prediction
+				.withIdentifier('grow-' + growBatch)
+				.withFormat('Outcome: %s/%s')
+				.print(this._ns.nFormat(this._calculator.targetNode.server.moneyAvailable, enums.Format.money),
+					this._ns.nFormat(this._calculator.targetNode.server.moneyMax, enums.Format.money))
 
 			growBatch++
 		}

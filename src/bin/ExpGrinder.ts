@@ -1,5 +1,5 @@
 import {NS} from "@ns";
-import {IdentifierLogger, LogType} from "/lib/logging/Logger";
+import {Logger} from "/lib/logging/Logger";
 import {Toaster} from "/lib/logging/Toaster";
 import {FlufferCalculator} from "/lib/FlufferCalculator";
 import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient";
@@ -25,7 +25,7 @@ export async function main(ns: NS): Promise<void> {
 class ExpGrinder {
 	readonly maxThreads: number
 	private readonly _ns: NS
-	private readonly _logger: IdentifierLogger
+	private readonly _logger: Logger
 	private readonly _toaster: Toaster
 	private readonly _calculator: FlufferCalculator
 	private readonly _ramClient: IpcRamClient
@@ -39,7 +39,7 @@ class ExpGrinder {
 	constructor(ns: NS, maxThreads: number, targetServerHostname: string) {
 		this._ns = ns
 
-		this._logger = new IdentifierLogger(ns)
+		this._logger = new Logger(ns)
 		this._toaster = new Toaster(ns)
 
 		this.maxThreads = maxThreads
@@ -75,15 +75,21 @@ class ExpGrinder {
 				this._calculator.targetNode.server.hostname);
 
 			if (startedThreads !== this._reservedThreads) {
-				this._logger.error(LogType.log, this._batch, 'Started threads do not match reserved threads %s != %s',
-					startedThreads, this._reservedThreads)
+				this._logger.error()
+					.withIdentifier(this._batch)
+					.withFormat('Started threads do not match reserved threads %s != %s')
+					.print(startedThreads, this._reservedThreads)
 				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
 
-			this._logger.info(LogType.log, this._batch, 'G %s / R %s',
-				startedThreads, this._reservedThreads)
-			this._logger.info(LogType.log, this._batch, 'Duration %s',
-				this._ns.tFormat(batchDuration, true))
+			this._logger.info()
+				.withIdentifier(this._batch)
+				.withFormat('G %s / R %s')
+				.print(startedThreads, this._reservedThreads)
+			this._logger.info()
+				.withIdentifier(this._batch)
+				.withFormat('Duration %s')
+				.print(this._ns.tFormat(batchDuration, true))
 
 			await this._ns.sleep(batchDuration)
 

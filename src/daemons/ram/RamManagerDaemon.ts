@@ -1,7 +1,7 @@
 import {NS, ProcessInfo} from '@ns'
-import {IdentifierLogger, LogType} from '/lib/logging/Logger'
+import {Logger} from '/lib/logging/Logger'
 import {duplex, IpcMessagingServer, RequestHandler} from "/lib/ipc/messaging/IpcMessagingServer";
-import {Allotments, RamMessageType, ReservationRequest, Reservation, ReservationsByKey} from "/daemons/ram/RamMessageType";
+import {Allotments, RamMessageType, Reservation, ReservationRequest, ReservationsByKey} from "/daemons/ram/RamMessageType";
 import {RamManagerEndpoints} from "/daemons/ram/RamManagerEndpoints";
 import {getNetNodes} from '/lib/NetNode'
 import * as enums from '/lib/enums'
@@ -19,7 +19,7 @@ export async function main(ns: NS): Promise<void> {
 
 class RamManagerDaemon {
 	private readonly _ns: NS
-	private readonly _logger: IdentifierLogger
+	private readonly _logger: Logger
 	private readonly _server: IpcMessagingServer<RamMessageType>
 
 	private readonly _ramTable: Record<string, number> = {}
@@ -28,7 +28,7 @@ class RamManagerDaemon {
 	constructor(ns: NS) {
 		this._ns = ns
 
-		this._logger = new IdentifierLogger(ns)
+		this._logger = new Logger(ns)
 		this._server = duplex(ns, ramManagerIdentifier, enums.PortIndex.ramMessagingClientIn, enums.PortIndex.ramMessagingServerIn)
 
 		this._reservationTable.home = []
@@ -57,9 +57,13 @@ class RamManagerDaemon {
 			case RamManagerEndpoints.requestReservation: {
 				const data = handler.request.messageData
 				if (data === undefined) {
-					this._logger.error(LogType.log, handler.request.messageId, 'Ram reservation request without data')
+					this._logger.error()
+						.withIdentifier(handler.request.messageId)
+						.print('Ram reservation request without data')
 				}
-				this._logger.info(LogType.log, handler.request.messageId, 'Reserving ram')
+				this._logger.info()
+					.withIdentifier(handler.request.messageId)
+					.print('Reserving ram')
 				const reservationRequests = data as ReservationRequest[]
 				const reservations = {} as ReservationsByKey
 				reservationRequests.forEach(request => {
@@ -76,35 +80,48 @@ class RamManagerDaemon {
 				if (Object.entries(reservations).length > 0) {
 					await handler.respond(reservations)
 				} else {
-					this._logger.warn(LogType.log, handler.request.messageId, 'Rejecting reservation')
+					this._logger.warn()
+						.withIdentifier(handler.request.messageId)
+						.print('Rejecting reservation')
 					await handler.respond({})
 				}
 				break
 			}
 			case RamManagerEndpoints.releaseReservation: {
-				this._logger.info(LogType.log, handler.request.messageId, 'Releasing all reservations')
+				this._logger.info()
+					.withIdentifier(handler.request.messageId)
+					.print('Releasing all reservations')
 				this.releaseReservations(handler.request.requester)
 				await handler.respond('OK')
 				break
 			}
 			case RamManagerEndpoints.lookupReservations: {
-				this._logger.info(LogType.log, handler.request.messageId, 'Looking up reservations')
+				this._logger.info()
+					.withIdentifier(handler.request.messageId)
+					.print('Looking up reservations')
 				await handler.respond(this._reservationTable)
 				break
 			}
 			case RamManagerEndpoints.lookupFreeRamByAllotments: {
 				const data = handler.request.messageData
 				if (data === undefined) {
-					this._logger.error(LogType.log, handler.request.messageId, 'Lookup request without data')
+					this._logger.error()
+						.withIdentifier(handler.request.messageId)
+						.print('Lookup request without data')
 				}
-				this._logger.info(LogType.log, handler.request.messageId, 'Looking up free ram by allocation')
+				this._logger.info()
+					.withIdentifier(handler.request.messageId)
+					.print('Looking up free ram by allocation')
 				const allocationSize = data as number
 				const ramAllocation = this.calculateTotalUnreservedRam(allocationSize, handler.request.requester)
 				await handler.respond(ramAllocation)
 				break
 			}
 			default: {
-				this._logger.error(LogType.log, handler.request.messageId, 'Manager does not handle %s endpoints', handler.request.endpoint)
+				this._logger.error()
+					.withIdentifier(handler.request.messageId)
+					.withFormat('Manager does not handle %s endpoints')
+					.print(handler.request.endpoint)
 				await handler.respond('NOK')
 				break
 			}

@@ -1,8 +1,8 @@
 import {AutocompleteData, NS} from '@ns'
-import {getNetNode} from 'lib/NetNode'
-import {Logger, LogType} from 'lib/logging/Logger'
-import {runningHackingScripts} from 'lib/runningHackingScripts'
-import * as enums from 'lib/enums'
+import {getNetNode} from '/lib/NetNode'
+import {Logger} from '/lib/logging/Logger'
+import {runningHackingScripts} from '/lib/runningHackingScripts'
+import * as enums from '/lib/enums'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
@@ -20,7 +20,10 @@ export async function main(ns: NS): Promise<void> {
 	const maxHackPercentage = args['max-hack-percentage'] as number
 
 	if (maxHackPercentage !== -1 && maxHackPercentage <= 0 && maxHackPercentage > 1) {
-		logger.error(LogType.terminal, 'Hack percentage %s is invalid', maxHackPercentage)
+		logger.error()
+			.terminal()
+			.withFormat('Hack percentage %s is invalid')
+			.print(maxHackPercentage)
 		return
 	}
 
@@ -38,18 +41,24 @@ export async function main(ns: NS): Promise<void> {
 		}).length > 0
 
 	if (batcherRunning) {
-		logger.info(LogType.terminal, 'Server %s is already being batched', targetNode.server.hostname)
+		logger.info()
+			.terminal()
+			.withIdentifier(targetNode.server.hostname)
+			.print('Server is already being batched')
 		return
 	}
 
 	await runningHackingScripts(ns, targetNode.server.hostname)
 
-	if (
-		targetNode.server.hackDifficulty > targetNode.server.minDifficulty ||
-		targetNode.server.moneyAvailable < targetNode.server.moneyMax
-	) {
-		logger.info(LogType.log, 'Fluffing %s', targetNode.server.hostname)
-		logger.info(LogType.terminal, 'Fluffing %s', targetNode.server.hostname)
+	if (targetNode.server.hackDifficulty > targetNode.server.minDifficulty ||
+		targetNode.server.moneyAvailable < targetNode.server.moneyMax) {
+		logger.info()
+			.withIdentifier(targetNode.server.hostname)
+			.print('Fluffing')
+		logger.info()
+			.terminal()
+			.withIdentifier(targetNode.server.hostname)
+			.print('Fluffing')
 		ns.exec(enums.BatcherScripts.fluffer, execNode.server.hostname, 1, targetNode.server.hostname)
 		while (ns.isRunning(enums.BatcherScripts.fluffer, execNode.server.hostname, targetNode.server.hostname)) {
 			await ns.sleep(1000)
@@ -61,7 +70,12 @@ export async function main(ns: NS): Promise<void> {
 		batcherArgs.unshift('--max-hack-percentage', String(maxHackPercentage))
 	}
 
-	logger.info(LogType.log, 'Spawning formulas batcher targeting %s', targetNode.server.hostname)
-	logger.info(LogType.terminal, 'Spawning formulas batcher targeting %s', targetNode.server.hostname)
+	logger.info()
+		.withIdentifier(targetNode.server.hostname)
+		.print('Spawning batcher')
+	logger.info()
+		.terminal()
+		.withIdentifier(targetNode.server.hostname)
+		.print('Spawning batcher')
 	ns.spawn(enums.BatcherScripts.batcher, 1, ...batcherArgs)
 }
