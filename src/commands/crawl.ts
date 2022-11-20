@@ -1,6 +1,10 @@
 import {AutocompleteData, NS, Server} from '@ns'
 import {getNetTree, NetNode} from 'lib/NetNode'
 import * as enums from 'lib/enums'
+import {Logger, LogType} from "/lib/logging/Logger";
+import {HGWFormulasCalculator} from "/lib/HGWFormulasCalculator";
+import {calculateServerValue} from "/lib/calculateServerValue";
+import {mockMaxServer} from "/lib/mockServer";
 
 const headers = {
 	rooted: '>',
@@ -24,8 +28,7 @@ export async function main(ns: NS): Promise<void> {
 	const watch = args['watch'] as boolean
 	const origin = (args['_'] as string[]).length === 0 ? ns.getHostname() : (args['_'] as string[])[0]
 
-	const hackingLevel = ns.getHackingLevel()
-	const ownedPortBreakersCount = portBreakerFiles.filter((portBreaker) => ns.fileExists(portBreaker)).length
+	const printer = new NetNodePrinter(ns)
 
 	ns.tprintf('~~~~~~~~~~ Beginning crawl ~~~~~~~~~~')
 	ns.tprintf(' ')
@@ -34,59 +37,75 @@ export async function main(ns: NS): Promise<void> {
 		const netNodes = netTree.flat()
 		// noinspection InfiniteLoopJS
 		while (true) {
-			travelNetTree(ns, netTree, hackingLevel, ownedPortBreakersCount)
+			travelNetTree(netTree, printer)
 			await ns.sleep(2000)
 			netNodes.forEach((node) => node.refresh())
 		}
 	} else {
-		travelNetTree(ns, getNetTree(ns, origin, maxDepth), hackingLevel, ownedPortBreakersCount)
+		travelNetTree(getNetTree(ns, origin, maxDepth), printer)
 	}
 }
 
-function travelNetTree(ns: NS, node: NetNode, hackingLevel: number, ownedPortBreakersCount: number): void {
-	print(ns, node, hackingLevel, ownedPortBreakersCount)
-	node.children.forEach((child) => travelNetTree(ns, child, hackingLevel, ownedPortBreakersCount))
+function travelNetTree(node: NetNode, printer: NetNodePrinter): void {
+	printer.printNetNode(node)
+	node.children.forEach((child) => travelNetTree(child, printer))
 }
 
-function print(ns: NS, node: NetNode, hackingLevel: number, ownedPortBreakersCount: number): void {
-	const server = node.server
+class NetNodePrinter {
+	readonly hackingLevel: number
+	readonly ownedPortBreakersCount: number
+	private readonly _ns: NS
+	private readonly _logger: Logger
 
-	ns.tprintf('%s%s %s', indent(node.depth), header(hackingLevel, ownedPortBreakersCount, server), server.hostname)
-	if (server.hasAdminRights && !server.purchasedByPlayer && !server.backdoorInstalled) {
-		ns.tprintf('%s--%s', indent(node.depth), 'Can be backdoored')
+	constructor(ns: NS) {
+		this._ns = ns
+
+		this.hackingLevel = ns.getHackingLevel()
+		this.ownedPortBreakersCount = portBreakerFiles.filter((portBreaker) => ns.fileExists(portBreaker)).length
+
+		this._logger = new Logger(ns)
 	}
-	if (!server.hasAdminRights) {
-		ns.tprintf(
-			'%s--Hacking: %s/%s, Ports: %s/%s',
-			indent(node.depth),
-			hackingLevel,
-			server.requiredHackingSkill,
-			ownedPortBreakersCount,
-			server.numOpenPortsRequired
-		)
+
+	printNetNode(node: NetNode): void {
+		this._print('%s%s %s', indent(node.depth), header(this.hackingLevel,
+			this.ownedPortBreakersCount, node.server), node.server.hostname)
+		if (node.server.hasAdminRights && !node.server.purchasedByPlayer && !node.server.backdoorInstalled) {
+			this._print('%s--%s', indent(node.depth), 'Backdoor can be installed')
+		}
+		if (!node.server.hasAdminRights) {
+			this._print('%s--Hacking: %s/%s, Ports: %s/%s', indent(node.depth),
+				this.hackingLevel, node.server.requiredHackingSkill, this.ownedPortBreakersCount, node.server.numOpenPortsRequired)
+		}
+		if (node.server.moneyMax !== 0) {
+			this._print('%s--Security: %s/%s, Money: %s/%s, Growth rate: %s', indent(node.depth),
+				this._ns.nFormat(node.server.hackDifficulty - node.server.minDifficulty, enums.Format.security),
+				this._ns.nFormat(100 - node.server.minDifficulty, enums.Format.security),
+				this._ns.nFormat(node.server.moneyAvailable, enums.Format.money),
+				this._ns.nFormat(node.server.moneyMax, enums.Format.money),
+				node.server.serverGrowth)
+		}
+		if (node.server.moneyMax !== 0 && node.server.hasAdminRights) {
+			const mockedServer = mockMaxServer(node.server)
+			const mockedNode = node.mockNode(mockedServer)
+			const calculator = new HGWFormulasCalculator(this._ns, mockedNode, 0.2, 0.1, 200)
+			this._print('%s--%s / sec, %s hacking exp / sec, %s threads / sec, Value: %s', indent(node.depth),
+				this._ns.nFormat(calculator.calculateMPS(), enums.Format.money),
+				this._ns.nFormat(calculator.calculateEPS(), enums.Format.exp),
+				this._ns.nFormat(calculator.calculateTUPS(), enums.Format.threads),
+				this._ns.nFormat(calculateServerValue(calculator), enums.Format.serverValue))
+		}
+		if (node.server.maxRam !== 0) {
+			this._print('%s--Cores: %s, RAM: %s/%s', indent(node.depth),
+				node.server.cpuCores,
+				this._ns.nFormat(node.usedRamMB() * 1000000, enums.Format.ram),
+				this._ns.nFormat(node.maxRamMB() * 1000000, enums.Format.ram))
+		}
+		this._print(' ')
 	}
-	if (server.moneyMax !== 0) {
-		const securityLevel = server.hackDifficulty
-		ns.tprintf(
-			'%s--Security: %s/%s, Money: %s/%s, Growth rate: %s',
-			indent(node.depth),
-			ns.nFormat(securityLevel - server.minDifficulty, enums.Format.security),
-			ns.nFormat(100 - server.minDifficulty, enums.Format.security),
-			ns.nFormat(server.moneyAvailable, enums.Format.money),
-			ns.nFormat(server.moneyMax, enums.Format.money),
-			server.serverGrowth
-		)
+
+	private _print(format: string, ...args: unknown[]): void {
+		this._logger.print(LogType.terminal, format, ...args)
 	}
-	if (server.maxRam !== 0) {
-		ns.tprintf(
-			'%s--Cores: %s, RAM: %s/%s',
-			indent(node.depth),
-			server.cpuCores,
-			ns.nFormat(node.usedRamMB() * 1000000, enums.Format.ram),
-			ns.nFormat(node.maxRamMB() * 1000000, enums.Format.ram)
-		)
-	}
-	ns.tprintf(' ')
 }
 
 function indent(depth: number) {

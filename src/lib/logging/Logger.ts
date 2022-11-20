@@ -1,5 +1,5 @@
-import { NS } from '@ns'
-import { Severity } from 'lib/logging/Severity'
+import {NS} from '@ns'
+import {Severity} from 'lib/logging/Severity'
 
 export class Logger {
 	ns: NS

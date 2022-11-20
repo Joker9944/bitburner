@@ -1,20 +1,24 @@
 import {NS, Player, Server} from '@ns'
+import {mockServer} from "/lib/mockServer";
 import * as enums from 'lib/enums'
 
 export function findBatcherThreadCounts(ns: NS, percentage: number, growThreadsSuggestion: number,
                                         player: Player, target: Server, cores: number): HGWThreads {
-	const mockServer = populateMockServer(target, ns.formulas.mockServer())
+	const mockedServer = mockServer(target)
 
 	// hack
 	const moneyPerHackThread = ns.hackAnalyze(target.hostname)
+	if (moneyPerHackThread === 0) {
+		throw new Error('Server ' + target.hostname + ' is not hackable')
+	}
 	const hackThreads = Math.ceil(percentage / moneyPerHackThread)
 	const hackSecurityIncrease = hackThreads * enums.Security.hackIncrease
-	mockServer.hackDifficulty += hackSecurityIncrease
-	mockServer.moneyAvailable -= target.moneyMax * moneyPerHackThread * hackThreads
+	mockedServer.hackDifficulty += hackSecurityIncrease
+	mockedServer.moneyAvailable -= target.moneyMax * moneyPerHackThread * hackThreads
 
 	// grow
-	const targetPercentage = target.moneyMax / mockServer.moneyAvailable
-	const growThreads = findGrowThreadCount(ns, targetPercentage, growThreadsSuggestion, player, mockServer, cores)
+	const targetPercentage = (target.moneyMax / mockedServer.moneyAvailable) + 0.01
+	const growThreads = findGrowThreadCount(ns, targetPercentage, growThreadsSuggestion, player, mockedServer, cores)
 	const growSecurityIncrease = growThreads * enums.Security.growIncrease
 
 	// weaken
@@ -22,35 +26,23 @@ export function findBatcherThreadCounts(ns: NS, percentage: number, growThreadsS
 	const totalSecurityIncrease = hackSecurityIncrease + growSecurityIncrease
 	const weakenSecurityDecrease = ns.weakenAnalyze(1, cores)
 	const weakenThreads = Math.ceil((totalSecurityIncrease + securityDrift) / weakenSecurityDecrease)
-	return new HGWThreads(hackThreads, growThreads, weakenThreads, totalSecurityIncrease)
-}
-
-export class HGWThreads {
-	hack: number
-	grow: number
-	weaken: number
-	totalSecurityIncrease: number
-
-	constructor(hack: number, grow: number, weaken: number, totalSecurityIncrease: number) {
-		this.hack = hack
-		this.grow = grow
-		this.weaken = weaken
-		this.totalSecurityIncrease = totalSecurityIncrease
-	}
-
-	total(): number {
-		return this.hack + this.grow + this.weaken
+	return {
+		hack: hackThreads,
+		grow: growThreads,
+		weaken: weakenThreads,
+		totalSecurityIncrease: totalSecurityIncrease,
 	}
 }
 
-function populateMockServer(original: Server, mock: Server): Server {
-	mock.moneyMax = original.moneyMax
-	mock.moneyAvailable = original.moneyAvailable
-	mock.serverGrowth = original.serverGrowth
-	mock.baseDifficulty = original.baseDifficulty
-	mock.minDifficulty = original.minDifficulty
-	mock.hackDifficulty = original.hackDifficulty
-	return mock
+export type HGWThreads = {
+	hack: number,
+	grow: number,
+	weaken: number,
+	totalSecurityIncrease: number,
+}
+
+export function calculateTotalThreads(threads: HGWThreads): number {
+	return threads.hack + threads.grow + threads.weaken
 }
 
 function findGrowThreadCount(ns: NS, targetPercentage: number, growThreadsSuggestion: number,

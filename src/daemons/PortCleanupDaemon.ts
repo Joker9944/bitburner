@@ -1,6 +1,6 @@
 import {NS} from "@ns";
 import {Logger, LogType} from 'lib/logging/Logger'
-import {IpcPortClient} from "/lib/ipc/IpcPortClient";
+import {Envelop, IpcPortClient} from "/lib/ipc/IpcPortClient";
 import * as enums from 'lib/enums'
 
 export const portCleanupIdentifier = 'port-cleanup-daemon'
@@ -33,8 +33,11 @@ export class PortCleanupDaemon {
 			const now = new Date().getTime()
 
 			for (const client of this._clients) {
-				const envelope = await client.peek()
-				const sent = envelope.sent
+				const envelope = client.forcePeek()
+				if (envelope === undefined) {
+					continue
+				}
+				const sent = (envelope as Envelop<unknown>).sent
 				if (now > sent + timeout) {
 					this._logger.warn(LogType.log, 'Message in queue for longer than %s seconds %s', timeout / 1000, JSON.stringify(envelope))
 					client.pop()

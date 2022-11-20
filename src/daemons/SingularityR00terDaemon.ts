@@ -52,8 +52,12 @@ export class SingularityR00terDaemon {
 				for (const node of hackableServers) {
 					this.root(node)
 					this.copyLaunchpad(node)
+				}
+				this.ns.tprintf('Installing backdoors on %s servers', hackableServers.length)
+				for (const node of hackableServers) {
 					await this.backdoor(node)
 				}
+				this.ns.tprintf('Finished installing backdoors')
 			} else {
 				await this.ns.sleep(10000)
 			}

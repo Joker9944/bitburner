@@ -7,6 +7,10 @@ export function simplex<T>(ns: NS, identifier: string, port: number): IpcMessagi
 	return new IpcMessagingServer(new IpcPortClient<Message<T>>(ns, identifier, port))
 }
 
+export function duplex<T>(ns: NS, identifier: string, portIn: number, portOut: number): IpcMessagingServer<T> {
+	return new IpcMessagingServer(new IpcPortClient<Message<T>>(ns, identifier, portIn, portOut))
+}
+
 export class IpcMessagingServer<T> {
 	private readonly _portClient: IpcPortClient<Message<T>>
 

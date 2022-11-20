@@ -1,10 +1,10 @@
 import {NS, Player, Server} from '@ns'
-import {findBatcherThreadCounts, HGWThreads} from 'lib/findBatcherThreadCounts'
+import {calculateTotalThreads, findBatcherThreadCounts, HGWThreads} from 'lib/findBatcherThreadCounts'
 
 export function findBatcherHackingPercentage(ns: NS, targetThreadCount: number, percentageSuggestion: number, maxPercentage: number,
                                              growThreadsSuggestion: number, player: Player, target: Server, cores: number): number {
 	const max = findBatcherThreadCounts(ns, maxPercentage, growThreadsSuggestion, player, target, cores)
-	if (max.total() <= targetThreadCount) {
+	if (calculateTotalThreads(max) <= targetThreadCount) {
 		return maxPercentage
 	}
 
@@ -35,7 +35,7 @@ class Result {
 function searchHigh(ns: NS, targetThreadCount: number, percentage: number, increase: number, growThreadsSuggestion: number,
                     player: Player, target: Server, cores: number): Result {
 	const threads = findBatcherThreadCounts(ns, percentage, growThreadsSuggestion, player, target, cores)
-	if (threads.total() >= targetThreadCount) {
+	if (calculateTotalThreads(threads) >= targetThreadCount) {
 		return new Result(threads, percentage)
 	} else {
 		return searchHigh(ns, targetThreadCount, percentage + increase, increase, threads.grow, player, target, cores)
@@ -45,7 +45,7 @@ function searchHigh(ns: NS, targetThreadCount: number, percentage: number, incre
 function searchLow(ns: NS, targetThreadCount: number, percentage: number, decrease: number, growThreadsSuggestion: number,
                    player: Player, target: Server, cores: number): Result {
 	const threads = findBatcherThreadCounts(ns, percentage, growThreadsSuggestion, player, target, cores)
-	if (threads.total() <= targetThreadCount) {
+	if (calculateTotalThreads(threads) <= targetThreadCount) {
 		return new Result(threads, percentage)
 	} else {
 		return searchLow(ns, targetThreadCount, percentage - decrease, decrease, threads.grow, player, target, cores)

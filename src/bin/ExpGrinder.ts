@@ -1,45 +1,100 @@
-import {getNetNode} from "/lib/NetNode";
-import {executeScript} from 'lib/executeScript'
+import {NS} from "@ns";
+import {IdentifierLogger, LogType} from "/lib/logging/Logger";
+import {Toaster} from "/lib/logging/Toaster";
+import {FlufferCalculator} from "/lib/FlufferCalculator";
+import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient";
+import {calculateTotalTickets, Reservation} from "/daemons/ram/RamMessageType";
+import {execReservations} from "/daemons/ram/execReservations";
 import * as enums from 'lib/enums'
 
-// TODO port this
+const identifierPrefix = 'exp-grinder-'
+const refreshPeriod = 60000
+
 export async function main(ns: NS): Promise<void> {
-	ns.disableLog('scan');
-	ns.disableLog('getServerUsedRam');
-	ns.disableLog('exec');
-	ns.disableLog('getServerMoneyAvailable');
-	ns.disableLog('getServerSecurityLevel');
-	ns.disableLog('sleep');
+	ns.disableLog('ALL');
 
 	const args = ns.flags([
-		['thread-limit', 1000000]
+		['max-threads', 10000]
 	])
-	const growThreads = args['thread-limit'] as number * 0.9
+	const maxThreads = args['max-threads'] as number
 	const targetServerHostname = (args['_'] as string[]).length === 0 ? 'foodnstuff' : (args['_'] as string[])[0]
-	const targetNode = getNetNode(ns, targetServerHostname)
 
-	const execServerHostname = ns.getHostname()
+	await new ExpGrinder(ns, maxThreads, targetServerHostname).main()
+}
 
-	let batch = 0;
-	// noinspection InfiniteLoopJS
-	while (true) {
-		const execNode = getNetNode(ns, execServerHostname)
-		const securityDecrease = ns.weakenAnalyze(1, execNode.server.cpuCores);
+class ExpGrinder {
+	readonly maxThreads: number
+	private readonly _ns: NS
+	private readonly _logger: IdentifierLogger
+	private readonly _toaster: Toaster
+	private readonly _calculator: FlufferCalculator
+	private readonly _ramClient: IpcRamClient
 
-		const securityIncrease = growThreads * enums.Security.growIncrease;
-		const weakenThreads = Math.ceil(securityIncrease / securityDecrease);
+	private _maxThreads = 0
+	private _reservations: Reservation[] = []
+	private _reservedThreads = 0
+	private _lastRefresh = (-refreshPeriod) - 1
+	private _batch = 0
 
-		let startedThreads = executeScript(ns, enums.LaunchpadScripts.weaken, weakenThreads, enums.reservedRam, targetNode.server.hostname);
-		startedThreads += executeScript(ns, enums.LaunchpadScripts.grow, growThreads, enums.reservedRam, targetNode.server.hostname);
-		const requestedThreads = growThreads + weakenThreads;
-		if (startedThreads < requestedThreads) {
-			ns.printf('WARNING: Requested %s threads but only started %s', requestedThreads, startedThreads);
-			ns.toast('Failed to schedule threads', ns.enums.toast.WARNING, 10);
+	constructor(ns: NS, maxThreads: number, targetServerHostname: string) {
+		this._ns = ns
+
+		this._logger = new IdentifierLogger(ns)
+		this._toaster = new Toaster(ns)
+
+		this.maxThreads = maxThreads
+
+		this._calculator = new FlufferCalculator(ns, targetServerHostname)
+		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
+	}
+
+	async main(): Promise<void> {
+		// noinspection InfiniteLoopJS
+		while (true) {
+			const now = new Date().getTime()
+			const batchDuration = this._calculator.determineWWait()
+			if (now > this._lastRefresh + refreshPeriod) {
+				this._maxThreads = await this.determineMaxThreads()
+
+				const reservationTime = batchDuration > refreshPeriod ? batchDuration : refreshPeriod + batchDuration // TODO improve less than calculation
+				this._reservations = (await this._ramClient.reserveThreads({
+					name: 'weaken',
+					tickets: this._maxThreads,
+					allocationSize: enums.ScriptCost.weaken,
+					duration: reservationTime,
+					affinity: {
+						hostnames: ['home'],
+						anti: false,
+						hard: this._calculator.ownsAdditionalCores()
+					}
+				})).weaken
+				this._reservedThreads = calculateTotalTickets(this._reservations)
+			}
+
+			const startedThreads = execReservations(this._ns, this._reservations, enums.LaunchpadScripts.weaken,
+				this._calculator.targetNode.server.hostname);
+
+			if (startedThreads !== this._reservedThreads) {
+				this._logger.error(LogType.log, this._batch, 'Started threads do not match reserved threads %s != %s',
+					startedThreads, this._reservedThreads)
+				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
+			}
+
+			this._logger.info(LogType.log, this._batch, 'G %s / R %s',
+				startedThreads, this._reservedThreads)
+			this._logger.info(LogType.log, this._batch, 'Duration %s',
+				this._ns.tFormat(batchDuration, true))
+
+			await this._ns.sleep(batchDuration)
+
+			this._calculator.refresh()
+
+			this._batch++
 		}
+	}
 
-		const wait = ns.getWeakenTime(targetNode.server.hostname) + 500
-		await ns.sleep(wait);
-
-		ns.printf('INFO [%s]: Grow threads: %s, Total threads: %s, Duration: %s', batch++, growThreads, startedThreads, ns.tFormat(wait));
+	async determineMaxThreads(): Promise<number> {
+		const maxAvailableThreads = await this._ramClient.lookupTotalThreads()
+		return Math.min(maxAvailableThreads, this.maxThreads)
 	}
 }

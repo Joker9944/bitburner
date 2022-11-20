@@ -47,11 +47,10 @@ export enum Format {
 	ram = '0.00b',
 	percentage = '0.00%',
 	rep = '0.000a',
+	exp = '0.000a',
+	threads = '0.00a',
+	serverValue = '0.00a',
 }
-
-export const reservedRam = {
-	home: 30000,
-} as Record<string, number>
 
 export enum ScriptCost {
 	hack = 1700,
@@ -60,13 +59,15 @@ export enum ScriptCost {
 }
 
 export enum PortIndex {
-	ramMessaging = 1,
-	cncBroadcasting = 2,
-	cncMessaging = 3,
+	ramMessagingClientIn = 1,
+	ramMessagingServerIn = 2,
+	cncBroadcasting = 3,
+	cncMessaging = 4,
 }
 
 export enum PortCleanup {
-	ramManager = PortIndex.ramMessaging,
+	ramMessagingClientIn = PortIndex.ramMessagingClientIn,
+	ramMessagingServerIn = PortIndex.ramMessagingServerIn,
 	cncMessaging = PortIndex.cncMessaging
 }
 

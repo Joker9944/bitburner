@@ -38,7 +38,6 @@ class Fluffer {
 		this._toaster = new Toaster(ns)
 
 		this._calculator = new FlufferCalculator(ns, targetServerHostname)
-
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
 		this._broadcastClient = createBroadcastClient(ns, enums.PortIndex.cncBroadcasting)
 	}

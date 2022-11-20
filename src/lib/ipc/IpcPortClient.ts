@@ -58,6 +58,15 @@ export class IpcPortClient<T> {
 		return JSON.parse(portData as string) as Envelop<T>
 	}
 
+	forcePeek(): Envelop<T> | unknown {
+		const peekData = this._portHandleIn.peek()
+		if ((peekData as string) === 'NULL PORT DATA') {
+			return undefined
+		} else {
+			return JSON.parse(peekData as string) as Envelop<T>
+		}
+	}
+
 	pop(): void {
 		this._portHandleIn.read()
 	}

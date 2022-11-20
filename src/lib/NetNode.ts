@@ -1,4 +1,4 @@
-import { NS, Server } from '@ns'
+import {NS, Server} from '@ns'
 
 export function getNetTree(ns: NS, origin = 'home', maxDepth = -1): NetNode {
 	return buildNetNode(ns, origin, origin, 0, maxDepth)
@@ -25,16 +25,16 @@ function buildNetNode(ns: NS, parent: string, current: string, depth: number, ma
 }
 
 export class NetNode {
-	ns: NS
 	server: Server
-
 	parent?: NetNode
-	children: NetNode[]
-	depth: number
-	netRoot: boolean
+	readonly children: NetNode[]
+	readonly depth: number
+	readonly netRoot: boolean
+	private readonly _ns: NS
+	private _mock = false
 
 	constructor(ns: NS, server: Server, children: NetNode[], depth: number, netRoot: boolean) {
-		this.ns = ns
+		this._ns = ns
 		this.server = server
 
 		this.children = children
@@ -43,7 +43,9 @@ export class NetNode {
 	}
 
 	refresh(): void {
-		this.server = this.ns.getServer(this.server.hostname)
+		if (!this._mock) {
+			this.server = this._ns.getServer(this.server.hostname)
+		}
 	}
 
 	flat(): NetNode[] {
@@ -79,5 +81,12 @@ export class NetNode {
 			// we are at root
 			throw new Error('searchPathDown not implemented yet')
 		}
+	}
+
+	mockNode(mockServer: Server): NetNode {
+		const mock = {...this}
+		mock._mock = true
+		mock.server = mockServer
+		return mock
 	}
 }

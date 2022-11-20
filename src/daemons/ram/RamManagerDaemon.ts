@@ -1,6 +1,6 @@
 import {NS, ProcessInfo} from '@ns'
 import {IdentifierLogger, LogType} from '/lib/logging/Logger'
-import {IpcMessagingServer, RequestHandler, simplex} from "/lib/ipc/messaging/IpcMessagingServer";
+import {duplex, IpcMessagingServer, RequestHandler} from "/lib/ipc/messaging/IpcMessagingServer";
 import {Allotments, RamMessageType, ReservationRequest, Reservation, ReservationsByKey} from "/daemons/ram/RamMessageType";
 import {RamManagerEndpoints} from "/daemons/ram/RamManagerEndpoints";
 import {getNetNodes} from '/lib/NetNode'
@@ -9,6 +9,7 @@ import * as enums from '/lib/enums'
 export const ramManagerIdentifier = 'daemon-ram-manager'
 const continuousReservationsOwner = ramManagerIdentifier + '-continuous'
 const hardReservationsOwner = ramManagerIdentifier + '-hard'
+const timeoutBuffer = 2000
 
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog('ALL')
@@ -28,7 +29,7 @@ class RamManagerDaemon {
 		this._ns = ns
 
 		this._logger = new IdentifierLogger(ns)
-		this._server = simplex(ns, ramManagerIdentifier, enums.PortIndex.ramMessaging)
+		this._server = duplex(ns, ramManagerIdentifier, enums.PortIndex.ramMessagingClientIn, enums.PortIndex.ramMessagingServerIn)
 
 		this._reservationTable.home = []
 		this._reservationTable.home.push({
@@ -268,7 +269,7 @@ class RamManagerDaemon {
 		}
 
 		if (request.duration !== undefined) {
-			reservation.timeout = new Date().getTime() + request.duration
+			reservation.timeout = new Date().getTime() + request.duration + timeoutBuffer
 		}
 
 		this._reservationTable[hostname].push(reservation)
