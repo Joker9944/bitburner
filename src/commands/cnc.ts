@@ -1,24 +1,28 @@
 import {AutocompleteData, NS} from '@ns'
-import {cncDaemonIdentifier} from "/daemons/cnc/CnCBroadcasterDaemon";
-import {CnCEndpoints} from "/daemons/cnc/CnCEndpoints";
-import {Bounds} from "/daemons/cnc/Bounds";
+import {cncDaemonIdentifier} from '/daemons/cnc/CnCBroadcasterDaemon'
+import {CnCEndpoints} from '/daemons/cnc/CnCEndpoints'
+import {Bounds} from '/daemons/cnc/Bounds'
 import {simplex} from '/lib/ipc/messaging/IpcMessagingClient'
-import * as enums from "/lib/enums";
+import {ArgsSchema} from '/lib/ArgsSchema'
+import * as enums from '/lib/enums'
 
 export const cncCommandIdentifier = 'command-cnc'
 
+const argsSchema = [
+	[enums.CommonArgs.maxHackPercentage, -1],
+	[enums.CommonArgs.maxThreads, -1],
+] as ArgsSchema
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
-	return ['--max-hack-percentage', '--max-threads'];
+	data.flags(argsSchema)
+	return []
 }
 
 export async function main(ns: NS): Promise<void> {
-	const args = ns.flags([
-		['max-hack-percentage', -1],
-		['max-threads', -1]
-	])
-	const maxHackPercentage = args['max-hack-percentage'] as number
-	const maxThreads = args['max-threads'] as number
+	const args = ns.flags(argsSchema)
+	const maxHackPercentage = args[enums.CommonArgs.maxHackPercentage] as number
+	const maxThreads = args[enums.CommonArgs.maxThreads] as number
 
 	const messagingClient = simplex<Bounds>(ns, cncDaemonIdentifier, cncCommandIdentifier, enums.PortIndex.cncMessaging)
 

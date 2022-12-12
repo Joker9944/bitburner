@@ -1,14 +1,24 @@
 import {AutocompleteData, NS} from '@ns'
 import {getNetNodes, getNetNode} from 'lib/NetNode'
+import {ArgsSchema} from '/lib/ArgsSchema'
 import * as enums from 'lib/enums'
+
+enum Args {
+	home = 'home',
+}
+
+const argsSchema = [
+	[Args.home, false],
+] as ArgsSchema
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
-	return ['--home'];
+	data.flags(argsSchema)
+	return [];
 }
 
 export async function main(ns: NS): Promise<void> {
-	const args = ns.flags([['home', false]])
+	const args = ns.flags(argsSchema)
 
 	let ramUsed = 0
 	let ramTotal = 0

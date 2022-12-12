@@ -1,10 +1,11 @@
 import {AutocompleteData, NS, Server} from '@ns'
 import {getNetTree, NetNode} from '/lib/NetNode'
+import {Logger} from "/lib/logging/Logger"
+import {HGWFormulasCalculator} from '/lib/HGWFormulasCalculator'
+import {calculateServerValue} from '/lib/calculateServerValue'
+import {mockMaxServer} from '/lib/mockServer'
+import {ArgsSchema} from '/lib/ArgsSchema'
 import * as enums from '/lib/enums'
-import {Logger} from "/lib/logging/Logger";
-import {HGWFormulasCalculator} from "/lib/HGWFormulasCalculator";
-import {calculateServerValue} from "/lib/calculateServerValue";
-import {mockMaxServer} from "/lib/mockServer";
 
 const headers = {
 	rooted: '>',
@@ -14,19 +15,22 @@ const headers = {
 
 const portBreakerFiles = Object.values(enums.PortBreakerFiles)
 
+const argsSchema = [
+	[enums.CommonArgs.maxDepth, -1],
+	[enums.CommonArgs.watch, false],
+] as ArgsSchema
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
-	return [...data.servers, '--max-depth', '--watch'];
+	data.flags(argsSchema)
+	return [];
 }
 
 export async function main(ns: NS): Promise<void> {
-	const args = ns.flags([
-		['max-depth', -1],
-		['watch', false],
-	])
-	const maxDepth = args['max-depth'] as number
-	const watch = args['watch'] as boolean
-	const origin = (args['_'] as string[]).length === 0 ? ns.getHostname() : (args['_'] as string[])[0]
+	const args = ns.flags(argsSchema)
+	const maxDepth = args[enums.CommonArgs.maxDepth] as number
+	const watch = args[enums.CommonArgs.watch] as boolean
+	const origin = (args[enums.CommonArgs.positional] as string[]).length === 0 ? ns.getHostname() : (args[enums.CommonArgs.positional] as string[])[0]
 
 	const logger = new Logger(ns)
 	const printer = new NetNodePrinter(ns, logger)

@@ -1,5 +1,6 @@
 import {AutocompleteData, NS} from '@ns'
 import {getNetNodes} from '/lib/NetNode'
+import * as enums from '/lib/enums'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
@@ -8,7 +9,7 @@ export function autocomplete(data: AutocompleteData, args: string[]): unknown {
 
 export async function main(ns: NS): Promise<void> {
 	const args = ns.flags([])
-	const target = (args['_'] as string[]).length === 0 ? 'n00dles' : (args['_'] as string[])[0]
+	const target = (args[enums.CommonArgs.positional] as string[]).length === 0 ? 'n00dles' : (args[enums.CommonArgs.positional] as string[])[0]
 
 	const origin = ns.getHostname()
 	const netNodes = getNetNodes(ns)

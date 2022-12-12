@@ -6,6 +6,16 @@ export enum PortBreakerFiles {
 	sqlinject = 'SQLInject.exe',
 }
 
+export enum CommonArgs {
+	maxHackPercentage = 'max-hack-percentage',
+	maxThreads = 'max-threads',
+	maxDepth = 'max-depth',
+	watch = 'watch',
+	sort = 'sort',
+	limit = 'limit',
+	positional = '_',
+}
+
 export enum Commands {
 	shack = '/commands/shack.js',
 	fluffer = '/commands/fluffer.js',

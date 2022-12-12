@@ -1,5 +1,6 @@
 import {AutocompleteData, InfiltrationLocation, NS} from '@ns'
 import {Logger} from '/lib/logging/Logger'
+import {ArgsSchema} from '/lib/ArgsSchema'
 import * as enums from '/lib/enums'
 
 const difficultyMap: Record<string, number> = {
@@ -10,22 +11,29 @@ const difficultyMap: Record<string, number> = {
 
 // TODO test this
 
+enum Args {
+	difficulty = 'difficulty',
+}
+
+const argsSchema = [
+	[Args.difficulty, 'medium'],
+	[enums.CommonArgs.sort, 'rep'],
+	[enums.CommonArgs.limit, 5],
+] as ArgsSchema
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
-	return ['--difficulty', '--sort', '--limit'];
+	data.flags(argsSchema)
+	return [];
 }
 
 export async function main(ns: NS): Promise<void> {
 	const logger = new Logger(ns)
 
-	const args = ns.flags([
-		['difficulty', 'medium'],
-		['sort', 'rep'],
-		['limit', 5],
-	])
-	const difficulty = (args['difficulty'] as string).toLowerCase()
-	const sort = (args['sort'] as string).toLowerCase()
-	const limit = args['limit'] as number
+	const args = ns.flags(argsSchema)
+	const difficulty = (args[Args.difficulty] as string).toLowerCase()
+	const sort = (args[enums.CommonArgs.sort] as string).toLowerCase()
+	const limit = args[enums.CommonArgs.limit] as number
 
 	let infiltrations = ns.infiltration
 		.getPossibleLocations()

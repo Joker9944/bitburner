@@ -2,11 +2,17 @@ import {AutocompleteData, NS} from '@ns'
 import {getNetNode} from '/lib/NetNode'
 import {Logger} from '/lib/logging/Logger'
 import {runningHackingScripts} from '/lib/runningHackingScripts'
+import {ArgsSchema} from '/lib/ArgsSchema'
 import * as enums from '/lib/enums'
+
+const argsSchema = [
+	[enums.CommonArgs.maxHackPercentage, -1],
+] as ArgsSchema
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
-	return [...data.servers, '--max-hack-percentage'];
+	data.flags(argsSchema)
+	return [...data.servers];
 }
 
 export async function main(ns: NS): Promise<void> {
@@ -14,10 +20,8 @@ export async function main(ns: NS): Promise<void> {
 
 	const logger = new Logger(ns)
 
-	const args = ns.flags([
-		['max-hack-percentage', -1],
-	])
-	const maxHackPercentage = args['max-hack-percentage'] as number
+	const args = ns.flags(argsSchema)
+	const maxHackPercentage = args[enums.CommonArgs.maxHackPercentage] as number
 
 	if (maxHackPercentage !== -1 && maxHackPercentage <= 0 && maxHackPercentage > 1) {
 		logger.error()
