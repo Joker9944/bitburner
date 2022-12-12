@@ -1,23 +1,33 @@
-import {NS} from "@ns";
-import {Logger} from "/lib/logging/Logger";
-import {Toaster} from "/lib/logging/Toaster";
-import {FlufferCalculator} from "/lib/FlufferCalculator";
-import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient";
-import {calculateTotalTickets, Reservation} from "/daemons/ram/RamMessageType";
-import {execReservations} from "/daemons/ram/execReservations";
+import {AutocompleteData, NS} from '@ns'
+import {Logger} from '/lib/logging/Logger'
+import {Toaster} from '/lib/logging/Toaster'
+import {FlufferCalculator} from '/lib/FlufferCalculator'
+import {createRamClient, IpcRamClient} from '/daemons/ram/IpcRamClient'
+import {calculateTotalTickets, Reservation} from '/daemons/ram/RamMessageType'
+import {execReservations} from '/daemons/ram/execReservations'
+import {positionalArgument} from '/lib/positionalArgument'
+import {ArgsSchema} from '/lib/ArgsSchema'
 import * as enums from 'lib/enums'
 
 const identifierPrefix = 'exp-grinder-'
 const refreshPeriod = 60000
 
+const argsSchema = [
+	[enums.CommonArgs.maxThreads, 10000],
+] as ArgsSchema
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): unknown {
+	data.flags(argsSchema)
+	return []
+}
+
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog('ALL');
 
-	const args = ns.flags([
-		['max-threads', 10000]
-	])
-	const maxThreads = args['max-threads'] as number
-	const targetServerHostname = (args['_'] as string[]).length === 0 ? 'foodnstuff' : (args['_'] as string[])[0]
+	const args = ns.flags(argsSchema)
+	const maxThreads = args[enums.CommonArgs.maxThreads] as number
+	const targetServerHostname = positionalArgument(args, 0, 'foodnstuff') as string
 
 	await new ExpGrinder(ns, maxThreads, targetServerHostname).main()
 }

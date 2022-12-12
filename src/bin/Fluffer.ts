@@ -1,22 +1,28 @@
-import {NS} from '@ns'
-import {Logger} from "/lib/logging/Logger"
-import {Toaster} from "/lib/logging/Toaster"
-import {FlufferCalculator} from "/lib/FlufferCalculator"
-import {createRamClient, IpcRamClient} from "/daemons/ram/IpcRamClient"
-import {createBroadcastClient, IpcBroadcastClient} from "/lib/ipc/broadcast/IpcBroadcastClient"
-import {Bounds} from "/daemons/cnc/Bounds"
-import {runningHackingScripts} from "/lib/runningHackingScripts"
-import {execReservations} from "/daemons/ram/execReservations"
-import {calculateTotalTickets} from "/daemons/ram/RamMessageType"
-import * as enums from "/lib/enums"
+import {AutocompleteData, NS} from '@ns'
+import {Logger} from '/lib/logging/Logger'
+import {Toaster} from '/lib/logging/Toaster'
+import {FlufferCalculator} from '/lib/FlufferCalculator'
+import {createRamClient, IpcRamClient} from '/daemons/ram/IpcRamClient'
+import {createBroadcastClient, IpcBroadcastClient} from '/lib/ipc/broadcast/IpcBroadcastClient'
+import {Bounds} from '/daemons/cnc/Bounds'
+import {runningHackingScripts} from '/lib/runningHackingScripts'
+import {execReservations} from '/daemons/ram/execReservations'
+import {calculateTotalTickets} from '/daemons/ram/RamMessageType'
+import {positionalArgument} from '/lib/positionalArgument'
+import * as enums from '/lib/enums'
 
 const identifierPrefix = 'fluffer-'
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): unknown {
+	return [...data.servers]
+}
 
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog('ALL')
 
 	const args = ns.flags([])
-	const targetServerHostname = (args['_'] as string[]).length === 0 ? 'n00dles' : (args['_'] as string[])[0]
+	const targetServerHostname = positionalArgument(args, 0, 'n00dles') as string
 
 	await new Fluffer(ns, targetServerHostname).main()
 }
@@ -44,7 +50,6 @@ class Fluffer {
 
 	async main(): Promise<void> {
 		await runningHackingScripts(this._ns, this._calculator.targetNode.server.hostname)
-
 
 		let weakenBatch = 1
 		while (this._calculator.targetNode.server.hackDifficulty > this._calculator.targetNode.server.minDifficulty) {
@@ -126,7 +131,7 @@ class Fluffer {
 			const maxThreads = await this.determineMaxThreads()
 			const calculatedThreadsGrow = Math.floor(maxThreads * 0.9) // TODO find a way to improve this
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
-			const securityDeficit = this._ns.growthAnalyzeSecurity(calculatedThreadsGrow)
+			const securityDeficit = calculatedThreadsGrow * enums.Security.growIncrease
 			const calculatedThreadsWeaken = Math.ceil(securityDeficit / securityDecrease)
 			const calculatedTotal = calculatedThreadsGrow + calculatedThreadsWeaken
 

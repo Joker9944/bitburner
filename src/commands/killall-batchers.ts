@@ -2,12 +2,11 @@ import {NS} from '@ns'
 import {getNetNodes} from '/lib/NetNode'
 import * as enums from '/lib/enums'
 
+const batcherScripts = Object.values(enums.BatcherScripts) as string[]
+
 export async function main(ns: NS): Promise<void> {
 	const execServerHostname = ns.getHostname()
-	const processes = getNetNodes(ns, execServerHostname).flatMap(node => {
-		return ns.ps(node.server.hostname).filter(process => process.filename === enums.BatcherScripts.batcher)
-	})
-	processes.forEach(process => {
-		ns.kill(process.pid)
-	})
+	const processes = getNetNodes(ns, execServerHostname).flatMap(node => ns.ps(node.server.hostname)
+		.filter(process => batcherScripts.includes(process.filename)))
+	processes.forEach(process => ns.kill(process.pid))
 }

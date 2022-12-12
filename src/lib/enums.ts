@@ -13,12 +13,9 @@ export enum CommonArgs {
 	watch = 'watch',
 	sort = 'sort',
 	limit = 'limit',
+	hackPercentageSuggestion = 'hack-percentage-suggestion',
+	growThreadSuggestion = 'grow-thread-suggestion',
 	positional = '_',
-}
-
-export enum Commands {
-	shack = '/commands/shack.js',
-	fluffer = '/commands/fluffer.js',
 }
 
 export enum DaemonScripts {
@@ -32,6 +29,7 @@ export enum DaemonScripts {
 export enum BatcherScripts {
 	fluffer = '/bin/Fluffer.js',
 	batcher = '/bin/Batcher.js',
+	h4cker = '/bin/H4cker.js',
 }
 
 export enum LaunchpadScripts {

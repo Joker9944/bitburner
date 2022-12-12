@@ -1,4 +1,4 @@
-import {NS} from '@ns'
+import {AutocompleteData, NS} from '@ns'
 import {Logger} from '/lib/logging/Logger'
 import {Toaster} from '/lib/logging/Toaster'
 import {HGWFormulasCalculator} from '/lib/HGWFormulasCalculator'
@@ -8,25 +8,40 @@ import {execReservations} from '/daemons/ram/execReservations'
 import {createBroadcastClient, IpcBroadcastClient} from '/lib/ipc/broadcast/IpcBroadcastClient'
 import {Bounds} from '/daemons/cnc/Bounds'
 import {runningHackingScripts} from '/lib/runningHackingScripts'
+import {getNetNode} from '/lib/NetNode'
+import {calculateTotalThreads, HGWThreads} from '/lib/formulas/findBatcherThreadCounts'
+import {positionalArgument} from '/lib/positionalArgument';
+import {ArgsSchema} from '/lib/ArgsSchema';
 import * as enums from '/lib/enums'
-import {getNetNode} from '/lib/NetNode';
-import {calculateTotalThreads, HGWThreads} from '/lib/formulas/findBatcherThreadCounts';
 
 const identifierPrefix = 'batcher-'
 const refreshPeriod = 60000
 
+enum Args {
+	hackPercentageSuggestion = 'hack-percentage-suggestion',
+	growThreadSuggestion = 'grow-thread-suggestion',
+}
+
+export const argsSchema = [
+	[enums.CommonArgs.maxHackPercentage, 0.3],
+	[Args.hackPercentageSuggestion, 0.2],
+	[Args.growThreadSuggestion, 200],
+] as ArgsSchema
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): unknown {
+	data.flags(argsSchema)
+	return [...data.servers]
+}
+
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog('ALL')
 
-	const args = ns.flags([
-		['max-hack-percentage', 0.3],
-		['hack-percentage-suggestion', 0.2],
-		['grow-thread-suggestion', 200],
-	])
-	const maxHackPercentage = args['max-hack-percentage'] as number
-	const hackPercentageSuggestion = args['hack-percentage-suggestion'] as number
-	const growThreadsSuggestion = args['grow-thread-suggestion'] as number
-	const targetServerHostname = (args['_'] as string[]).length === 0 ? 'n00dles' : (args['_'] as string[])[0]
+	const args = ns.flags(argsSchema)
+	const maxHackPercentage = args[enums.CommonArgs.maxHackPercentage] as number
+	const hackPercentageSuggestion = args[Args.hackPercentageSuggestion] as number
+	const growThreadsSuggestion = args[Args.growThreadSuggestion] as number
+	const targetServerHostname = positionalArgument(args, 0, 'n00dles') as string
 
 	await new Batcher(ns, targetServerHostname, maxHackPercentage, hackPercentageSuggestion, growThreadsSuggestion).main()
 }
@@ -83,21 +98,6 @@ class Batcher {
 				this._lastRefresh = now
 			}
 
-			/* TODO Calculations are fucked
-			 * Calculations are slightly over the target which leads to a reservation mismatch of one.
-			 * [2022-12-05 09:38:50] INFO [0]:  Max: T 255 / H% 30.00%
-			 * [2022-12-05 09:38:50] ERROR [0]: Started threads do not match calculated total threads 255 ≠ 259
-			 * [2022-12-05 09:38:50] ERROR [0]: H S 60 C 64 R 60 / G S 178 C 178 R 178 / W S 17 C 17 R 17
-			 * [2022-12-05 09:38:50] INFO [0]: Calc: H 64 / G 178 / W 17 / T 259 / H% 28.00%
-			 * [2022-12-05 09:38:50] INFO [0]:  Acc: H 60 / G 178 / W 17 / T 255 / R 255
-			 * [2022-12-05 09:38:50] INFO [0]: Duration 46.785 seconds
-			 * [2022-12-05 09:39:37] WARNING [1]: Forced to renew reservations C 259 ≠ R 255
-			 * [2022-12-05 09:39:37] ERROR [1]: Started threads do not match calculated total threads 255 ≠ 259
-			 * [2022-12-05 09:39:37] ERROR [1]: H S 60 C 64 R 60 / G S 178 C 178 R 178 / W S 17 C 17 R 17
-			 * [2022-12-05 09:39:37] INFO [1]: Calc: H 64 / G 178 / W 17 / T 259 / H% 28.00%
-			 * [2022-12-05 09:39:37] INFO [1]:  Acc: H 60 / G 178 / W 17 / T 255 / R 255
-			 * [2022-12-05 09:39:37] INFO [1]: Duration 46.459 seconds
-			 */
 			let calculatedThreadsResults = this._calculator.findThreadCounts(this._hackPercentage)
 			let calculatedThreadsTotal = calculateTotalThreads(calculatedThreadsResults.threads)
 			const calculationReservationMismatch = calculatedThreadsTotal !== this._reservedThreadsTotal

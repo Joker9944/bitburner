@@ -6,6 +6,7 @@ import {calculateServerValue} from '/lib/calculateServerValue'
 import {mockMaxServer} from '/lib/mockServer'
 import {ArgsSchema} from '/lib/ArgsSchema'
 import * as enums from '/lib/enums'
+import {positionalArgument} from '/lib/positionalArgument'
 
 const headers = {
 	rooted: '>',
@@ -23,14 +24,14 @@ const argsSchema = [
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): unknown {
 	data.flags(argsSchema)
-	return [];
+	return [...data.servers];
 }
 
 export async function main(ns: NS): Promise<void> {
 	const args = ns.flags(argsSchema)
 	const maxDepth = args[enums.CommonArgs.maxDepth] as number
 	const watch = args[enums.CommonArgs.watch] as boolean
-	const origin = (args[enums.CommonArgs.positional] as string[]).length === 0 ? ns.getHostname() : (args[enums.CommonArgs.positional] as string[])[0]
+	const origin = positionalArgument(args, 0, ns.getHostname()) as string
 
 	const logger = new Logger(ns)
 	const printer = new NetNodePrinter(ns, logger)
