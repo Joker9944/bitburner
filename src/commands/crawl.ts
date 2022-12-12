@@ -106,11 +106,11 @@ class NetNodePrinter {
 			const calculator = new HGWFormulasCalculator(this._ns, mockedNode, 0.2, 0.1, 200)
 			this._logger.print()
 				.terminal()
-				.withFormat('%s--%s / sec, %s hacking exp / sec, %s threads / sec, Value: %s')
+				.withFormat('%s--%s / sec, %s hacking exp / sec, %s thread usage, Value: %s')
 				.print(indent(node.depth),
 					this._ns.nFormat(calculator.calculateMPS(), enums.Format.money),
 					this._ns.nFormat(calculator.calculateEPS(), enums.Format.exp),
-					this._ns.nFormat(calculator.calculateTUPS(), enums.Format.threads),
+					calculator.calculateTU(),
 					this._ns.nFormat(calculateServerValue(calculator), enums.Format.serverValue))
 		}
 		if (node.server.maxRam !== 0) {

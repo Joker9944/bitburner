@@ -1,8 +1,10 @@
-import {HGWFormulasCalculator} from "/lib/HGWFormulasCalculator"
+import {HGWFormulasCalculator} from '/lib/HGWFormulasCalculator'
+import * as enums from '/lib/enums'
 
-export function calculateServerValue(calculator: HGWFormulasCalculator, weightMPS = 1, weightEPS = 1, weightTUPS = 1): number {
-	const valueTUPS = calculator.calculateTUPS() * weightTUPS
-	const valueMPS = calculator.calculateMPS() * weightMPS
-	const valueEPS = calculator.calculateEPS() * weightEPS
-	return valueMPS / valueTUPS + valueEPS / valueTUPS
+export function calculateServerValue(calculator: HGWFormulasCalculator, weightMPS = 1, weightEPS = 1, weightTU = 1): number {
+	const threadCost = calculator.calculateTU() * weightTU
+	const valueMoney = calculator.calculateMPS() * weightMPS
+	const eps = calculator.calculateEPS()
+	const valueExp = eps * enums.MoneyValue.exp * weightEPS
+	return (valueMoney + valueExp) / threadCost
 }

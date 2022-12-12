@@ -1,9 +1,9 @@
 import {NS} from '@ns'
-import {ramManagerIdentifier} from "/daemons/ram/RamManagerDaemon";
-import {duplex, IpcMessagingClient} from "/lib/ipc/messaging/IpcMessagingClient";
-import {Allotments, RamMessageType, ReservationRequest, ReservationsByKey} from "/daemons/ram/RamMessageType";
-import {RamManagerEndpoints} from "/daemons/ram/RamManagerEndpoints";
-import * as enums from "/lib/enums";
+import {ramManagerIdentifier} from '/daemons/ram/RamManagerDaemon';
+import {duplex, IpcMessagingClient} from '/lib/ipc/messaging/IpcMessagingClient';
+import {Allotments, RamMessageType, ReservationRequest, ReservationsByKey} from '/daemons/ram/RamMessageType';
+import {RamManagerEndpoints} from '/daemons/ram/RamManagerEndpoints';
+import * as enums from '/lib/enums';
 
 export function createRamClient(ns: NS, identifier: string): IpcRamClient {
 	const client = duplex<RamMessageType>(ns, ramManagerIdentifier, identifier, enums.PortIndex.ramMessagingServerIn, enums.PortIndex.ramMessagingClientIn)
@@ -18,8 +18,6 @@ export class IpcRamClient {
 	}
 
 	async reserveThreads(...reservations: ReservationRequest[]): Promise<ReservationsByKey> {
-		await this._client.get(RamManagerEndpoints.releaseReservation) // TODO this creates a race condition
-
 		const response = await this._client.post(RamManagerEndpoints.requestReservation, reservations)
 		const data = response.messageData as ReservationsByKey
 

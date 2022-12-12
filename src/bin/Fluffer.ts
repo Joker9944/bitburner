@@ -46,7 +46,7 @@ class Fluffer {
 		await runningHackingScripts(this._ns, this._calculator.targetNode.server.hostname)
 
 
-		let weakenBatch = 0
+		let weakenBatch = 1
 		while (this._calculator.targetNode.server.hackDifficulty > this._calculator.targetNode.server.minDifficulty) {
 			const maxThreads = await this.determineMaxThreads()
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
@@ -121,7 +121,7 @@ class Fluffer {
 			weakenBatch++
 		}
 
-		let growBatch = 0
+		let growBatch = 1
 		while (this._calculator.targetNode.server.moneyAvailable < this._calculator.targetNode.server.moneyMax) {
 			const maxThreads = await this.determineMaxThreads()
 			const calculatedThreadsGrow = Math.floor(maxThreads * 0.9) // TODO find a way to improve this

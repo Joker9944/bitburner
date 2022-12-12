@@ -61,6 +61,7 @@ class RamManagerDaemon {
 						.withIdentifier(handler.request.messageId)
 						.print('Ram reservation request without data')
 				}
+				this.releaseReservations(handler.request.requester)
 				this._logger.info()
 					.withIdentifier(handler.request.messageId)
 					.print('Reserving ram')

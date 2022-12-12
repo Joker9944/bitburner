@@ -6,23 +6,17 @@ export enum PortBreakerFiles {
 	sqlinject = 'SQLInject.exe',
 }
 
-export enum PortBreakerFilesCost {
-	tor = 200000,
-	brutessh = 'BruteSSH.exe',
-	ftpcrack = 'FTPCrack.exe',
-	relaysmtp = 'relaySMTP.exe',
-	httpworm = 'HTTPWorm.exe',
-	sqlinject = 'SQLInject.exe',
-}
-
 export enum Commands {
 	shack = '/commands/shack.js',
 	fluffer = '/commands/fluffer.js',
 }
 
 export enum DaemonScripts {
+	portCleanupDaemon = '/daemons/PortCleanupDaemon.js',
+	cnCBroadcasterDaemon = '/daemons/cnc/CnCBroadcasterDaemon.js',
 	r00terDaemon = '/daemons/R00terDaemon.js',
-	ramManagerDaemon = '/daemons/RamManagerDaemon.js',
+	ramManagerDaemon = '/daemons/ram/RamManagerDaemon.js',
+	backd00rDaemon = '/daemons/Backd00rDaemon.js',
 }
 
 export enum BatcherScripts {
@@ -48,7 +42,6 @@ export enum Format {
 	percentage = '0.00%',
 	rep = '0.000a',
 	exp = '0.000a',
-	threads = '0.00a',
 	serverValue = '0.00a',
 }
 
@@ -71,11 +64,15 @@ export enum PortCleanup {
 	cncMessaging = PortIndex.cncMessaging
 }
 
-export const hackingFactionServers = {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'CSEC': 'CyberSec',
-	'avmnite-02h': 'NiteSec',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'I.I.I.I': 'The Black Hand',
-	'run4theh111z': 'BitRunners',
-} as Record<string, string>
+export enum BackdoorPropertyServers {
+	csec = 'CSEC',
+	niteSec = 'avmnite-02h',
+	theBlackHand = 'I.I.I.I',
+	bitRunners = 'run4theh111z',
+	bitNode = 'w0r1d_d43m0n',
+}
+
+// multipliers to convert value to money
+export enum MoneyValue {
+	exp = 40
+}

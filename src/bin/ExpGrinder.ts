@@ -34,7 +34,7 @@ class ExpGrinder {
 	private _reservations: Reservation[] = []
 	private _reservedThreads = 0
 	private _lastRefresh = (-refreshPeriod) - 1
-	private _batch = 0
+	private _batch = 1
 
 	constructor(ns: NS, maxThreads: number, targetServerHostname: string) {
 		this._ns = ns

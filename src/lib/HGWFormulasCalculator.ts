@@ -1,7 +1,7 @@
 import {NS, Player} from '@ns'
 import {NetNode} from 'lib/NetNode'
-import {findBatcherHackingPercentage} from 'lib/findBatcherHackingPercentage'
-import {calculateTotalThreads, findBatcherThreadCounts, HGWThreads} from 'lib/findBatcherThreadCounts'
+import {findBatcherHackingPercentage} from '/lib/formulas/findBatcherHackingPercentage'
+import {calculateTotalThreads, findBatcherThreadCounts, ResultSetThreads} from '/lib/formulas/findBatcherThreadCounts'
 import {getNetNode} from '/lib/NetNode'
 
 export class HGWFormulasCalculator {
@@ -11,7 +11,7 @@ export class HGWFormulasCalculator {
 	private readonly _ns: NS
 	private _hackPercentageSuggestion: number
 	private _growThreadsSuggestion: number
-	private _maxThreadCounts?: HGWThreads
+	private readonly _resultCache: Map<number, ResultSetThreads> = new Map()
 	private _maxMoneyGain?: number
 	private _maxExpGain?: number
 	private _hgwWait?: number
@@ -43,54 +43,68 @@ export class HGWFormulasCalculator {
 	}
 
 	findHackingPercentage(targetThreadCount?: number): number {
-		if (targetThreadCount !== undefined) {
-			const percentage = findBatcherHackingPercentage(
-				this._ns,
-				targetThreadCount,
-				this._hackPercentageSuggestion,
-				this._maxHackPercentage,
-				this._growThreadsSuggestion,
-				this.player,
-				this.targetNode.server,
-				this.homeNode.server.cpuCores
-			)
-			this._hackPercentageSuggestion = percentage
-			return percentage
+		if (targetThreadCount === undefined) {
+			return this._maxHackPercentage
 		}
-		return this._maxHackPercentage
+		const cachedEntry = Array.from(this._resultCache.entries())
+			.find(entry => calculateTotalThreads(entry[1].threads) === targetThreadCount)
+		if (cachedEntry !== undefined) {
+			return cachedEntry[0]
+		}
+		const result = findBatcherHackingPercentage(
+			this._ns,
+			targetThreadCount,
+			this._hackPercentageSuggestion,
+			this._maxHackPercentage,
+			this._growThreadsSuggestion,
+			this.player,
+			this.targetNode.server,
+			this.homeNode.server.cpuCores
+		)
+		this._hackPercentageSuggestion = result.percentage
+		this._growThreadsSuggestion = result.threadResult.threads.grow
+		this._resultCache.set(result.percentage, result.threadResult)
+		return result.percentage
 	}
 
-	findThreadCounts(hackPercentage?: number): HGWThreads {
-		if (hackPercentage !== undefined) {
-			const threads = findBatcherThreadCounts(
-				this._ns,
-				hackPercentage,
-				this._growThreadsSuggestion,
-				this.player,
-				this.targetNode.server,
-				this.homeNode.server.cpuCores
-			)
-			this._growThreadsSuggestion = threads.grow
-			return threads
+	findThreadCounts(hackPercentage?: number): ResultSetThreads {
+		if (hackPercentage === undefined) {
+			hackPercentage = this._maxHackPercentage
 		}
-		if (this._maxThreadCounts === undefined) {
-			this._maxThreadCounts = this.findThreadCounts(this._maxHackPercentage)
+		const cachedEntry = this._resultCache.get(hackPercentage)
+		if (cachedEntry !== undefined) {
+			return cachedEntry
 		}
-		return this._maxThreadCounts
+		const result = findBatcherThreadCounts(
+			this._ns,
+			hackPercentage,
+			this._growThreadsSuggestion,
+			this.player,
+			this.targetNode.server,
+			this.homeNode.server.cpuCores
+		)
+		this._hackPercentageSuggestion = hackPercentage
+		this._growThreadsSuggestion = result.threads.grow
+		this._resultCache.set(hackPercentage, result)
+		return result
 	}
 
 	calculateTUPS(hackPercentage?: number): number {
-		return calculateTotalThreads(this.findThreadCounts(hackPercentage)) / (this.determineHWGWait() / 1000)
+		return calculateTotalThreads(this.findThreadCounts(hackPercentage).threads) / (this.determineHWGWait() / 1000)
+	}
+
+	calculateTU(hackPercentage?: number): number {
+		return calculateTotalThreads(this.findThreadCounts(hackPercentage).threads)
 	}
 
 	calculateMoneyGain(hackPercentage?: number): number {
 		if (hackPercentage !== undefined) {
 			const moneyPerThread = this._ns.hackAnalyze(this.targetNode.server.hostname) * this.targetNode.server.moneyMax
-			return this.findThreadCounts(hackPercentage).hack * moneyPerThread
+			return this.findThreadCounts(hackPercentage).threads.hack * moneyPerThread
 		}
 		if (this._maxMoneyGain === undefined) {
 			const moneyPerThread = this._ns.hackAnalyze(this.targetNode.server.hostname) * this.targetNode.server.moneyMax
-			this._maxMoneyGain = this.findThreadCounts().hack * moneyPerThread
+			this._maxMoneyGain = this.findThreadCounts().threads.hack * moneyPerThread
 		}
 		return this._maxMoneyGain
 	}
@@ -102,11 +116,11 @@ export class HGWFormulasCalculator {
 	calculateExpGain(hackPercentage?: number): number {
 		if (hackPercentage !== undefined) {
 			const expPerThread = this._ns.formulas.hacking.hackExp(this.targetNode.server, this.player)
-			return calculateTotalThreads(this.findThreadCounts(hackPercentage)) * expPerThread
+			return calculateTotalThreads(this.findThreadCounts(hackPercentage).threads) * expPerThread
 		}
 		if (this._maxExpGain === undefined) {
 			const expPerThread = this._ns.formulas.hacking.hackExp(this.targetNode.server, this.player)
-			this._maxExpGain = calculateTotalThreads(this.findThreadCounts()) * expPerThread
+			this._maxExpGain = calculateTotalThreads(this.findThreadCounts().threads) * expPerThread
 		}
 		return this._maxExpGain
 	}
@@ -133,11 +147,12 @@ export class HGWFormulasCalculator {
 	refresh(): void {
 		this.homeNode.refresh()
 		this.targetNode.refresh()
+		this.player = this._ns.getPlayer()
 		this._reset()
 	}
 
 	private _reset(): void {
-		this._maxThreadCounts = undefined
+		this._resultCache.clear()
 		this._maxMoneyGain = undefined
 		this._maxExpGain = undefined
 		this._hgwWait = undefined
