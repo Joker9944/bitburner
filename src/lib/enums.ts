@@ -43,16 +43,6 @@ export enum Security {
 	growIncrease = 0.004,
 }
 
-export enum Format {
-	security = '0.[000]',
-	money = '$0.000a',
-	ram = '0.00b',
-	percentage = '0.00%',
-	rep = '0.000a',
-	exp = '0.000a',
-	serverValue = '0.00a',
-}
-
 export enum ScriptCost {
 	hack = 1700,
 	grow = 1750,

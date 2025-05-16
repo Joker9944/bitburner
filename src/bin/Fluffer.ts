@@ -10,6 +10,7 @@ import {execReservations} from '/daemons/ram/execReservations'
 import {calculateTotalTickets} from '/daemons/ram/RamMessageType'
 import {positionalArgument} from '/lib/positionalArgument'
 import * as enums from '/lib/enums'
+import {Formatter} from "/lib/logging/Formatter";
 
 const identifierPrefix = 'fluffer-'
 
@@ -30,6 +31,7 @@ export async function main(ns: NS): Promise<void> {
 class Fluffer {
 	private readonly _ns: NS
 
+	private readonly _formatter: Formatter
 	private readonly _logger: Logger
 	private readonly _toaster: Toaster
 
@@ -40,6 +42,7 @@ class Fluffer {
 	constructor(ns: NS, targetServerHostname: string) {
 		this._ns = ns
 
+		this._formatter = new Formatter(ns)
 		this._logger = new Logger(ns)
 		this._toaster = new Toaster(ns)
 
@@ -52,7 +55,7 @@ class Fluffer {
 		await runningHackingScripts(this._ns, this._calculator.targetNode.server.hostname)
 
 		let weakenBatch = 1
-		while (this._calculator.targetNode.server.hackDifficulty > this._calculator.targetNode.server.minDifficulty) {
+		while (this._calculator.targetNode.server.hackDifficulty! > this._calculator.targetNode.server.minDifficulty!) {
 			const maxThreads = await this.determineMaxThreads()
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
 
@@ -98,12 +101,13 @@ class Fluffer {
 					.print(startedThreads, reservedThreads)
 				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
 			}
-			const exceptedSecurity = this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty - calculatedThreads * securityDecrease
+			const exceptedSecurity = this._calculator.targetNode.server.hackDifficulty! - this._calculator.targetNode.server.minDifficulty! - calculatedThreads * securityDecrease
 			this._logger.info()
 				.withIdentifier('weaken-' + weakenBatch)
 				.withFormat('Excepted outcome %s/%s')
-				.print(this._ns.nFormat(Math.max(exceptedSecurity, 0), enums.Format.security),
-					100 - this._calculator.targetNode.server.minDifficulty)
+				.print(this._formatter.security(Math.max(exceptedSecurity, 0)),
+					this._formatter.security(100 - this._calculator.targetNode.server.minDifficulty!)
+				)
 			this._logger.info()
 				.withIdentifier('weaken-' + weakenBatch)
 				.withFormat('W %s / R %s')
@@ -120,14 +124,15 @@ class Fluffer {
 			this._logger.info()
 				.withIdentifier('weaken-' + weakenBatch)
 				.withFormat('Actual outcome: %s/%s')
-				.print(this._ns.nFormat(this._calculator.targetNode.server.hackDifficulty - this._calculator.targetNode.server.minDifficulty, enums.Format.security),
-					100 - this._calculator.targetNode.server.minDifficulty)
+				.print(this._formatter.security(this._calculator.targetNode.server.hackDifficulty! - this._calculator.targetNode.server.minDifficulty!),
+					this._formatter.security(100 - this._calculator.targetNode.server.minDifficulty!)
+				)
 
 			weakenBatch++
 		}
 
 		let growBatch = 1
-		while (this._calculator.targetNode.server.moneyAvailable < this._calculator.targetNode.server.moneyMax) {
+		while (this._calculator.targetNode.server.moneyAvailable! < this._calculator.targetNode.server.moneyMax!) {
 			const maxThreads = await this.determineMaxThreads()
 			const calculatedThreadsGrow = Math.floor(maxThreads * 0.9) // TODO find a way to improve this
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
@@ -198,8 +203,9 @@ class Fluffer {
 			this._logger.info() // TODO implement outcome prediction
 				.withIdentifier('grow-' + growBatch)
 				.withFormat('Outcome: %s/%s')
-				.print(this._ns.nFormat(this._calculator.targetNode.server.moneyAvailable, enums.Format.money),
-					this._ns.nFormat(this._calculator.targetNode.server.moneyMax, enums.Format.money))
+				.print(this._formatter.money(this._calculator.targetNode.server.moneyAvailable!),
+					this._formatter.money(this._calculator.targetNode.server.moneyMax!)
+				)
 
 			growBatch++
 		}

@@ -99,11 +99,11 @@ export class HGWFormulasCalculator {
 
 	calculateMoneyGain(hackPercentage?: number): number {
 		if (hackPercentage !== undefined) {
-			const moneyPerThread = this._ns.hackAnalyze(this.targetNode.server.hostname) * this.targetNode.server.moneyMax
+			const moneyPerThread = this._ns.hackAnalyze(this.targetNode.server.hostname) * this.targetNode.server.moneyMax!
 			return this.findThreadCounts(hackPercentage).threads.hack * moneyPerThread
 		}
 		if (this._maxMoneyGain === undefined) {
-			const moneyPerThread = this._ns.hackAnalyze(this.targetNode.server.hostname) * this.targetNode.server.moneyMax
+			const moneyPerThread = this._ns.hackAnalyze(this.targetNode.server.hostname) * this.targetNode.server.moneyMax!
 			this._maxMoneyGain = this.findThreadCounts().threads.hack * moneyPerThread
 		}
 		return this._maxMoneyGain

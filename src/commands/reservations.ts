@@ -1,11 +1,12 @@
 import {NS} from '@ns'
 import {Logger} from '/lib/logging/Logger'
 import {createRamClient} from '/daemons/ram/IpcRamClient'
-import * as enums from '/lib/enums';
+import {Formatter} from "/lib/logging/Formatter";
 
 const identifier = 'command-threads'
 
 export async function main(ns: NS): Promise<void> {
+	const formatter = new Formatter(ns)
 	const logger = new Logger(ns)
 
 	const client = createRamClient(ns, identifier)
@@ -43,16 +44,17 @@ export async function main(ns: NS): Promise<void> {
 					.terminal()
 					.withFormat('%s -> %s / ram: %s, allocation: %s')
 					.print(reservation.owner, reservation.name,
-						ns.nFormat(reservation.ramMB * 1000000, enums.Format.ram),
-						ns.nFormat(reservation.allocationSize * 1000000, enums.Format.ram))
+						formatter.ram(reservation.ramMB / 1000),
+						formatter.ram(reservation.allocationSize / 1000)
+					)
 			} else {
 				const timeout = new Date(reservation.timeout)
 				logger.print()
 					.terminal()
 					.withFormat('%s -> %s / ram: %s, allocation: %s, timeout: %s')
 					.print(reservation.owner, reservation.name,
-						ns.nFormat(reservation.ramMB * 1000000, enums.Format.ram),
-						ns.nFormat(reservation.allocationSize * 1000000, enums.Format.ram),
+						formatter.ram(reservation.ramMB / 1000),
+						formatter.ram(reservation.allocationSize / 1000),
 						timeout.toLocaleString('sv'))
 			}
 		})

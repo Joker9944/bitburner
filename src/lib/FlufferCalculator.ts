@@ -24,7 +24,7 @@ export class FlufferCalculator {
 	}
 
 	calculateNeededWeakenThreads(securityDecrease: number): number {
-		const offset = this.targetNode.server.hackDifficulty - this.targetNode.server.minDifficulty
+		const offset = this.targetNode.server.hackDifficulty! - this.targetNode.server.minDifficulty!
 		return Math.ceil(offset / securityDecrease)
 	}
 

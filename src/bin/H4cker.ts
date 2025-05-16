@@ -19,8 +19,8 @@ export async function main(ns: NS): Promise<void> {
 	const args = ns.flags([])
 	const targetServerHostname = positionalArgument(args, 0, 'n00dles') as string
 	const targetNode = getNetNode(ns, targetServerHostname)
-	if (targetNode.server.hackDifficulty > targetNode.server.minDifficulty ||
-		targetNode.server.moneyAvailable < targetNode.server.moneyMax) {
+	if (targetNode.server.hackDifficulty! > targetNode.server.minDifficulty! ||
+		targetNode.server.moneyAvailable! < targetNode.server.moneyMax!) {
 		logger.info()
 			.withIdentifier(targetNode.server.hostname)
 			.print('Fluffing')

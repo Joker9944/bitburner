@@ -13,6 +13,7 @@ import {calculateTotalThreads, HGWThreads} from '/lib/formulas/findBatcherThread
 import {positionalArgument} from '/lib/positionalArgument';
 import {ArgsSchema} from '/lib/ArgsSchema';
 import * as enums from '/lib/enums'
+import {Formatter} from "/lib/logging/Formatter";
 
 const identifierPrefix = 'batcher-'
 const refreshPeriod = 60000
@@ -49,6 +50,7 @@ export async function main(ns: NS): Promise<void> {
 class Batcher {
 	private readonly _ns: NS
 
+	private readonly _formatter: Formatter
 	private readonly _logger: Logger
 	private readonly _toaster: Toaster
 
@@ -64,9 +66,10 @@ class Batcher {
 	private _batch = 1
 
 	constructor(ns: NS, targetServerHostname: string, maxHackPercentage: number,
-	            hackPercentageSuggestion: number, growThreadsSuggestion: number) {
+				hackPercentageSuggestion: number, growThreadsSuggestion: number) {
 		this._ns = ns
 
+		this._formatter = new Formatter(ns)
 		this._logger = new Logger(ns)
 		this._toaster = new Toaster(ns)
 
@@ -93,7 +96,7 @@ class Batcher {
 				this._logger.info()
 					.withIdentifier(this._batch)
 					.withFormat(' Max: T %s / H%% %s')
-					.print(this._maxThreads, this._ns.nFormat(this._calculator.maxHackPercentage, enums.Format.percentage))
+					.print(this._maxThreads, this._formatter.percentage(this._calculator.maxHackPercentage))
 
 				this._lastRefresh = now
 			}
@@ -115,12 +118,13 @@ class Batcher {
 				await this.reserveThreads(batchDuration, calculatedThreadsResults.threads)
 			}
 
-			if (calculatedThreadsResults.totalSecurityIncrease > 100 - this._calculator.targetNode.server.minDifficulty) {
+			if (calculatedThreadsResults.totalSecurityIncrease > 100 - this._calculator.targetNode.server.minDifficulty!) {
 				this._logger.warn()
 					.withIdentifier(this._batch)
 					.withFormat('Hitting max security %s / %s')
-					.print(this._ns.nFormat(calculatedThreadsResults.totalSecurityIncrease, enums.Format.security),
-						this._ns.nFormat(100 - this._calculator.targetNode.server.minDifficulty, enums.Format.security))
+					.print(this._formatter.security(calculatedThreadsResults.totalSecurityIncrease),
+						this._formatter.security(100 - this._calculator.targetNode.server.minDifficulty!)
+					)
 				this._toaster.warn('Hitting max security', this._calculator.targetNode.server.hostname)
 			}
 
@@ -158,7 +162,7 @@ class Batcher {
 				.withIdentifier(this._batch)
 				.withFormat('Calc: H %s / G %s / W %s / T %s / H%% %s')
 				.print(calculatedThreadsResults.threads.hack, calculatedThreadsResults.threads.grow, calculatedThreadsResults.threads.weaken,
-					calculatedThreadsTotal, this._ns.nFormat(this._hackPercentage, enums.Format.percentage))
+					calculatedThreadsTotal, this._formatter.percentage(this._hackPercentage))
 			this._logger.info()
 				.withIdentifier(this._batch)
 				.withFormat(' Acc: H %s / G %s / W %s / T %s / R %s')
@@ -171,31 +175,34 @@ class Batcher {
 
 			this._calculator.refresh()
 
-			if (this._calculator.targetNode.server.moneyAvailable < this._calculator.targetNode.server.moneyMax * 0.5) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			if (this._calculator.targetNode.server.moneyAvailable! < this._calculator.targetNode.server.moneyMax! * 0.5) {
 				this._logger.warn()
 					.withIdentifier(this._batch)
 					.withFormat('Encountering heavy money drift %s < %s')
-					.print(this._ns.nFormat(this._calculator.targetNode.server.moneyAvailable, enums.Format.money),
-						this._ns.nFormat(this._calculator.targetNode.server.moneyMax, enums.Format.money))
+					.print(this._formatter.money(this._calculator.targetNode.server.moneyAvailable!),
+						this._formatter.money(this._calculator.targetNode.server.moneyMax!))
 				this._toaster.warn('Encountering heavy money drift', this._calculator.targetNode.server.hostname)
-			} else if (this._calculator.targetNode.server.moneyAvailable < this._calculator.targetNode.server.moneyMax * 0.99) {
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			} else if (this._calculator.targetNode.server.moneyAvailable! < this._calculator.targetNode.server.moneyMax! * 0.99) {
 				this._logger.warn()
 					.withIdentifier(this._batch)
 					.withFormat('Encountering money drift %s < %s')
-					.print(this._ns.nFormat(this._calculator.targetNode.server.moneyAvailable, enums.Format.money),
-						this._ns.nFormat(this._calculator.targetNode.server.moneyMax, enums.Format.money))
+					.print(this._formatter.money(this._calculator.targetNode.server.moneyAvailable!),
+						this._formatter.money(this._calculator.targetNode.server.moneyMax!))
 			}
 
-			if (this._calculator.targetNode.server.hackDifficulty > this._calculator.targetNode.server.baseDifficulty) {
+			if (this._calculator.targetNode.server.hackDifficulty! > this._calculator.targetNode.server.baseDifficulty!) {
 				this._logger.warn()
 					.withIdentifier(this._batch)
 					.withFormat('Encountering security drift %s > %s')
-					.print(this._ns.nFormat(this._calculator.targetNode.server.hackDifficulty, enums.Format.security),
-						this._ns.nFormat(this._calculator.targetNode.server.minDifficulty, enums.Format.security))
+					.print(this._formatter.security(this._calculator.targetNode.server.hackDifficulty!),
+						this._formatter.security(this._calculator.targetNode.server.minDifficulty!))
 				this._toaster.warn('Encountering security drift', this._calculator.targetNode.server.hostname)
 			}
 
 			this._batch++
+			this._logger.print().print("-----------------------------")
 		}
 	}
 

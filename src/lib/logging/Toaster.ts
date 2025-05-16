@@ -1,5 +1,5 @@
 import {NS} from '@ns'
-import {Severity} from 'lib/logging/Severity'
+import {Severity} from "/lib/logging/Severity";
 
 const defaultLength = 10000
 
@@ -14,9 +14,9 @@ export class Toaster {
 	info(message: string, identifier: unknown): void
 	info(message: string, identifier?: unknown): void {
 		if (identifier) {
-			this.toast(message, Severity.info, identifier)
+			this.toast(message, Severity.warning, identifier)
 		} else {
-			this.toast(message, Severity.info)
+			this.toast(message, Severity.warning)
 		}
 	}
 

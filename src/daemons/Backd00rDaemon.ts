@@ -41,13 +41,13 @@ export class Backd00rDaemon {
 					const includesA = backdoorPropertyServers.includes(a.server.hostname)
 					const includesB = backdoorPropertyServers.includes(b.server.hostname)
 					if (includesA && includesB) {
-						return a.server.requiredHackingSkill - b.server.requiredHackingSkill
+						return (a.server.requiredHackingSkill ?? 0) - (b.server.requiredHackingSkill ?? 0)
 					} else if (includesA) {
 						return -1
 					} else if (includesB) {
 						return 1
 					} else {
-						return a.server.requiredHackingSkill - b.server.requiredHackingSkill
+						return (a.server.requiredHackingSkill ?? 0) - (b.server.requiredHackingSkill ?? 0)
 					}
 				})
 			if (backdoorInstallableServers.length > 0) {

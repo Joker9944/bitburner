@@ -40,8 +40,8 @@ export class R00terDaemon {
 			const hackingLevel = this.ns.getHackingLevel()
 			const ownedPortBreakersCount = this.countPortBreakerFiles()
 
-			const hackingSkillsMet = this.net.filter(node => !node.server.hasAdminRights && hackingLevel >= node.server.requiredHackingSkill)
-			const hackableServers = hackingSkillsMet.filter(node => ownedPortBreakersCount >= node.server.numOpenPortsRequired)
+			const hackingSkillsMet = this.net.filter(node => !node.server.hasAdminRights && hackingLevel >= (node.server.requiredHackingSkill ?? 0))
+			const hackableServers = hackingSkillsMet.filter(node => ownedPortBreakersCount >= (node.server.numOpenPortsRequired ?? 0))
 
 			if (hackingSkillsMet.length > hackableServers.length) {
 				this.logger.warn()

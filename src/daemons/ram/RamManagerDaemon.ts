@@ -32,12 +32,13 @@ class RamManagerDaemon {
 		this._server = duplex(ns, ramManagerIdentifier, enums.PortIndex.ramMessagingClientIn, enums.PortIndex.ramMessagingServerIn)
 
 		this._reservationTable.home = []
+		// TODO automatically reserve space for daemons, H4cker, etc.
 		this._reservationTable.home.push({
 			owner: hardReservationsOwner,
 			name: 'player',
 			hostname: 'home',
-			ramMB: 20000,
-			allocationSize: 20000,
+			ramMB: 25000,
+			allocationSize: 25000,
 		})
 	}
 

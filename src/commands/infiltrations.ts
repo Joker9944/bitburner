@@ -2,6 +2,7 @@ import {AutocompleteData, InfiltrationLocation, NS} from '@ns'
 import {Logger} from '/lib/logging/Logger'
 import {ArgsSchema} from '/lib/ArgsSchema'
 import * as enums from '/lib/enums'
+import {Formatter} from "/lib/logging/Formatter";
 
 const difficultyMap: Record<string, number> = {
 	easy: 1,
@@ -28,6 +29,7 @@ export function autocomplete(data: AutocompleteData, args: string[]): unknown {
 }
 
 export async function main(ns: NS): Promise<void> {
+	const formatter = new Formatter(ns)
 	const logger = new Logger(ns)
 
 	const args = ns.flags(argsSchema)
@@ -98,9 +100,9 @@ export async function main(ns: NS): Promise<void> {
 		logger.print()
 			.terminal()
 			.withFormat('Reward: %s or %s rep / SoA %s rep')
-			.print(ns.nFormat(infiltration.reward.sellCash, enums.Format.money),
-				ns.nFormat(infiltration.reward.tradeRep, enums.Format.rep),
-				ns.nFormat(infiltration.reward.SoARep, enums.Format.rep))
+			.print(formatter.money(infiltration.reward.sellCash),
+				formatter.rep(infiltration.reward.tradeRep),
+				formatter.rep(infiltration.reward.SoARep))
 		logger.print()
 			.terminal()
 			.print(' ')

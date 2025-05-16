@@ -1,7 +1,8 @@
 import {AutocompleteData, NS} from '@ns'
 import {getNetNodes, getNetNode} from 'lib/NetNode'
 import {ArgsSchema} from '/lib/ArgsSchema'
-import * as enums from 'lib/enums'
+import {Formatter} from "/lib/logging/Formatter";
+import {Logger} from "/lib/logging/Logger";
 
 enum Args {
 	home = 'home',
@@ -20,8 +21,12 @@ export function autocomplete(data: AutocompleteData, args: string[]): unknown {
 export async function main(ns: NS): Promise<void> {
 	const args = ns.flags(argsSchema)
 
+	const formatter = new Formatter(ns)
+	const logger = new Logger(ns)
+
 	let ramUsed = 0
 	let ramTotal = 0
+	// TODO List print
 	if (args['home']) {
 		const homeNode = getNetNode(ns, 'home')
 		ramUsed = homeNode.server.ramUsed
@@ -34,10 +39,12 @@ export async function main(ns: NS): Promise<void> {
 				ramTotal += node.server.maxRam
 			})
 	}
-	ns.tprintf(
-		'%s (%s/%s)',
-		ns.nFormat(ramUsed / ramTotal, enums.Format.percentage),
-		ns.nFormat(ramUsed * 1000000000, enums.Format.ram),
-		ns.nFormat(ramTotal * 1000000000, enums.Format.ram)
-	)
+	logger.print()
+		.terminal()
+		.withFormat('%s (%s/%s)')
+		.print(
+			formatter.percentage(ramUsed / ramTotal),
+			formatter.ram(ramUsed),
+			formatter.ram(ramTotal),
+		)
 }

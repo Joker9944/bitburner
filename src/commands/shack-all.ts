@@ -10,8 +10,8 @@ export async function main(ns: NS): Promise<void> {
 		.filter(process => batcherScripts.includes(process.filename))
 		.flatMap(process => process.args)
 	const shackableServers = getNetNodes(ns).filter((node) => node.server.hasAdminRights)
-		.filter((node) => node.server.moneyMax !== 0)
-		.filter((node) => node.server.serverGrowth > 1)
+		.filter((node) => node.server.moneyMax !== undefined)
+		.filter((node) => node.server.serverGrowth !== undefined && node.server.serverGrowth > 1)
 		.filter((node) => !runningBatcherArgs.includes(node.server.hostname))
 	for (const node of shackableServers) {
 		ns.exec(enums.BatcherScripts.h4cker, execServerHostname, 1, node.server.hostname)
