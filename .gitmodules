@@ -1,0 +1,3 @@
+[submodule "typescript-template"]
+	path = typescript-template
+	url = git@github.com:bitburner-official/typescript-template.git
