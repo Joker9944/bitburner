@@ -2,36 +2,37 @@ import {NS, Player, Server} from '@ns'
 import {mockServer} from '/lib/mockServer';
 import * as enums from '/lib/enums'
 
-export function findBatcherThreadCounts(ns: NS, percentage: number, growThreadsSuggestion: number,
-                                        player: Player, target: Server, cores: number): ResultSetThreads {
-	const targetPredictionServer = mockServer(target)
+export function findBatcherThreadCounts(ns: NS, hackPercentage: number,
+										player: Player, targetServer: Server, cores: number): ResultSetThreads {
+	const targetServerPrediction = mockServer(targetServer)
 
 	// hack
-	const moneyPercentagePerHackThread = ns.hackAnalyze(target.hostname)
+	const moneyPercentagePerHackThread = ns.hackAnalyze(targetServer.hostname)
 	if (moneyPercentagePerHackThread === 0) {
-		throw new Error('Server ' + target.hostname + ' is not hackable')
+		throw new Error('Server ' + targetServer.hostname + ' is not hackable')
 	}
-	const hackThreads = Math.ceil(percentage / moneyPercentagePerHackThread)
+	const hackThreads = Math.ceil(hackPercentage / moneyPercentagePerHackThread)
 	const hackSecurityIncrease = hackThreads * enums.Security.hackIncrease
-	targetPredictionServer.hackDifficulty! += hackSecurityIncrease
-	targetPredictionServer.moneyAvailable! -= target.moneyMax! * moneyPercentagePerHackThread * hackThreads
+	targetServerPrediction.hackDifficulty! += hackSecurityIncrease
+	targetServerPrediction.moneyAvailable! -= targetServer.moneyMax! * moneyPercentagePerHackThread * hackThreads
 
 	// grow
-	const targetPercentage = target.moneyMax! / targetPredictionServer.moneyAvailable!
-	const growThreads = findGrowThreadCount(ns, targetPercentage, growThreadsSuggestion, player, targetPredictionServer, cores)
+	const growThreads = ns.formulas.hacking.growThreads(targetServerPrediction, player, targetServer.moneyMax!, cores)
 	const growSecurityIncrease = growThreads * enums.Security.growIncrease
 
 	// weaken
-	const securityDrift = target.hackDifficulty! - target.minDifficulty!
+	const securityDrift = targetServer.hackDifficulty! - targetServer.minDifficulty!
 	const totalSecurityIncrease = hackSecurityIncrease + growSecurityIncrease
-	const weakenSecurityDecrease = ns.weakenAnalyze(1, cores)
-	const weakenThreads = Math.ceil((totalSecurityIncrease + securityDrift) / weakenSecurityDecrease)
+	const totalSecurityOffset = securityDrift + totalSecurityIncrease
+	const weakenSecurityDecreaseByThread = ns.weakenAnalyze(1, cores)
+	const weakenThreads = Math.ceil(totalSecurityOffset / weakenSecurityDecreaseByThread)
+
 	return {
 		totalSecurityIncrease: totalSecurityIncrease,
 		threads: {
-			hack: hackThreads,
-			grow: growThreads,
-			weaken: weakenThreads,
+			hackThreadCount: hackThreads,
+			growThreadCount: growThreads,
+			weakenThreadCount: weakenThreads,
 		}
 	}
 }
@@ -42,47 +43,11 @@ export type ResultSetThreads = {
 }
 
 export type HGWThreads = {
-	hack: number
-	grow: number
-	weaken: number
+	hackThreadCount: number
+	growThreadCount: number
+	weakenThreadCount: number
 }
 
 export function calculateTotalThreads(threads: HGWThreads): number {
-	return threads.hack + threads.grow + threads.weaken
-}
-
-function findGrowThreadCount(ns: NS, targetPercentage: number, growThreadsSuggestion: number,
-                             player: Player, server: Server, cores: number): number {
-	// one thread is more than needed
-	if (ns.formulas.hacking.growPercent(server, 1, player, cores) > targetPercentage) {
-		return 1
-	}
-
-	const startLow = growThreadsSuggestion - 50
-	const searchImprecise = 100
-	const searchPrecise = 1
-
-	const high = searchHigh(ns, targetPercentage, startLow, searchImprecise, player, server, cores)
-	const low = searchLow(ns, targetPercentage, high, searchImprecise, player, server, cores)
-	return searchHigh(ns, targetPercentage, low, searchPrecise, player, server, cores)
-}
-
-function searchHigh(ns: NS, targetPercentage: number, threads: number, increase: number,
-                    player: Player, server: Server, cores: number): number {
-	const percent = ns.formulas.hacking.growPercent(server, threads, player, cores)
-	if (percent > targetPercentage) {
-		return threads
-	} else {
-		return searchHigh(ns, targetPercentage, threads + increase, increase, player, server, cores)
-	}
-}
-
-function searchLow(ns: NS, targetPercentage: number, threads: number, decrease: number,
-                   player: Player, server: Server, cores: number): number {
-	const percent = ns.formulas.hacking.growPercent(server, threads, player, cores)
-	if (percent < targetPercentage) {
-		return threads
-	} else {
-		return searchLow(ns, targetPercentage, threads - decrease, decrease, player, server, cores)
-	}
+	return threads.hackThreadCount + threads.growThreadCount + threads.weakenThreadCount
 }

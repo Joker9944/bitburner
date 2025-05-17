@@ -7,7 +7,6 @@ export class HGWFormulasCalculator {
 
 	// Used to speedup consecutive searches since we know a number that was close on last calculation
 	private _hackPercentageSuggestion: number
-	private _growThreadsSuggestion: number
 
 	// The maximum amount we want to hack
 	private _maxHackPercentage: number
@@ -22,11 +21,10 @@ export class HGWFormulasCalculator {
 	private _hgwWait?: number
 
 	constructor(ns: NS, targetServer: Server,
-				maxHackPercentage: number, hackPercentageSuggestion: number, growThreadsSuggestion: number) {
+				maxHackPercentage: number, hackPercentageSuggestion: number) {
 		this._ns = ns
 
 		this._hackPercentageSuggestion = hackPercentageSuggestion
-		this._growThreadsSuggestion = growThreadsSuggestion
 
 		this._maxHackPercentage = maxHackPercentage
 
@@ -53,7 +51,6 @@ export class HGWFormulasCalculator {
 			this._ns,
 			targetThreadCount,
 			percentageSuggestion,
-			this._growThreadsSuggestion,
 			this._player,
 			this._targetServer,
 			this._homeServer.cpuCores
@@ -65,12 +62,10 @@ export class HGWFormulasCalculator {
 		} else {
 			// Result was smaller than max so we return result and setup suggestions for next run
 			this._hackPercentageSuggestion = result.percentage
-			this._growThreadsSuggestion = result.threadResult.threads.grow
 			return result.percentage
 		}
 	}
 
-	// TODO does this take max possible hack percentage into account?
 	findThreadCounts(hackPercentage?: number): ResultSetThreads {
 		if (hackPercentage === undefined) {
 			hackPercentage = this._maxHackPercentage
@@ -82,13 +77,11 @@ export class HGWFormulasCalculator {
 		const result = findBatcherThreadCounts(
 			this._ns,
 			hackPercentage,
-			this._growThreadsSuggestion,
 			this._player,
 			this._targetServer,
 			this._homeServer.cpuCores
 		)
 		this._hackPercentageSuggestion = hackPercentage
-		this._growThreadsSuggestion = result.threads.grow
 		this._resultCache.set(hackPercentage, result)
 		return result
 	}
@@ -106,11 +99,11 @@ export class HGWFormulasCalculator {
 	calculateMoneyGain(hackPercentage?: number): number {
 		if (hackPercentage !== undefined) {
 			const moneyPerThread = this._ns.hackAnalyze(this._targetServer.hostname) * this._targetServer.moneyMax!
-			return this.findThreadCounts(hackPercentage).threads.hack * moneyPerThread
+			return this.findThreadCounts(hackPercentage).threads.hackThreadCount * moneyPerThread
 		}
 		if (this._maxMoneyGain === undefined) {
 			const moneyPerThread = this._ns.hackAnalyze(this._targetServer.hostname) * this._targetServer.moneyMax!
-			this._maxMoneyGain = this.findThreadCounts().threads.hack * moneyPerThread
+			this._maxMoneyGain = this.findThreadCounts().threads.hackThreadCount * moneyPerThread
 		}
 		return this._maxMoneyGain
 	}

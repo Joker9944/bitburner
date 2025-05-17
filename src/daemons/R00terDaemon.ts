@@ -23,6 +23,7 @@ export class R00terDaemon {
 	readonly net: NetNode[]
 
 	rootedServersCount: number
+	portBreakerWarningCount = 0
 
 	constructor(ns: NS) {
 		this.ns = ns
@@ -56,10 +57,12 @@ export class R00terDaemon {
 			const hackableServers = hackingSkillsMet
 				.filter(server => ownedPortBreakersCount >= server.numOpenPortsRequired!)
 
-			if (hackingSkillsMet.length > hackableServers.length) {
+			const missingPortBreakerServersCount = hackingSkillsMet.length - hackableServers.length
+			if (missingPortBreakerServersCount > 0 && missingPortBreakerServersCount !== this.portBreakerWarningCount) {
+				this.portBreakerWarningCount = missingPortBreakerServersCount
 				this.logger.warn()
 					.withFormat('Could root %s server(s) with more port breakers')
-					.print(hackingSkillsMet.length)
+					.print(missingPortBreakerServersCount)
 			}
 
 			if (hackableServers.length > 0) {

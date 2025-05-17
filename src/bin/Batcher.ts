@@ -16,7 +16,6 @@ import {Formatter} from "/lib/logging/Formatter";
 
 const identifierPrefix = 'batcher-'
 const refreshPeriod = 60000
-const tolerance = 1e-10
 
 enum Args {
 	hackPercentageSuggestion = 'hack-percentage-suggestion',
@@ -26,7 +25,6 @@ enum Args {
 export const argsSchema = [
 	[enums.CommonArgs.maxHackPercentage, 0.3],
 	[Args.hackPercentageSuggestion, 0.2],
-	[Args.growThreadSuggestion, 200],
 ] as ArgsSchema
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -41,10 +39,9 @@ export async function main(ns: NS): Promise<void> {
 	const args = ns.flags(argsSchema)
 	const maxHackPercentage = args[enums.CommonArgs.maxHackPercentage] as number
 	const hackPercentageSuggestion = args[Args.hackPercentageSuggestion] as number
-	const growThreadsSuggestion = args[Args.growThreadSuggestion] as number
 	const targetServerHostname = positionalArgument(args, 0, 'n00dles') as string
 
-	await new Batcher(ns, targetServerHostname, maxHackPercentage, hackPercentageSuggestion, growThreadsSuggestion).main()
+	await new Batcher(ns, targetServerHostname, maxHackPercentage, hackPercentageSuggestion).main()
 }
 
 class Batcher {
@@ -65,8 +62,7 @@ class Batcher {
 	private _lastRefresh = (-refreshPeriod) - 1
 	private _batch = 1
 
-	constructor(ns: NS, targetServerHostname: string, maxHackPercentage: number,
-				hackPercentageSuggestion: number, growThreadsSuggestion: number) {
+	constructor(ns: NS, targetServerHostname: string, maxHackPercentage: number, hackPercentageSuggestion: number) {
 		this._ns = ns
 
 		this._formatter = new Formatter(ns)
@@ -74,7 +70,7 @@ class Batcher {
 		this._toaster = new Toaster(ns)
 
 		this._calculator = new HGWFormulasCalculator(ns, ns.getServer(targetServerHostname),
-			maxHackPercentage, hackPercentageSuggestion, growThreadsSuggestion)
+			maxHackPercentage, hackPercentageSuggestion)
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
 		this._broadcastClient = createBroadcastClient(ns, enums.PortIndex.cncBroadcasting)
 	}
@@ -143,9 +139,9 @@ class Batcher {
 				this._logger.error()
 					.withIdentifier(this._batch)
 					.withFormat('H S %s C %s R %s / G S %s C %s R %s / W S %s C %s R %s')
-					.print(startedThreadsHack, calculatedThreadsResults.threads.hack, calculateTotalTickets(this._reservations.hack),
-						startedThreadsGrow, calculatedThreadsResults.threads.grow, calculateTotalTickets(this._reservations.grow),
-						startedThreadsWeaken, calculatedThreadsResults.threads.weaken, calculateTotalTickets(this._reservations.weaken))
+					.print(startedThreadsHack, calculatedThreadsResults.threads.hackThreadCount, calculateTotalTickets(this._reservations.hack),
+						startedThreadsGrow, calculatedThreadsResults.threads.growThreadCount, calculateTotalTickets(this._reservations.grow),
+						startedThreadsWeaken, calculatedThreadsResults.threads.weakenThreadCount, calculateTotalTickets(this._reservations.weaken))
 				this._toaster.error('Started thread mismatch', this._calculator.targetServer.hostname)
 			}
 
@@ -160,7 +156,7 @@ class Batcher {
 			this._logger.info()
 				.withIdentifier(this._batch)
 				.withFormat('Calc: H %s / G %s / W %s / T %s / H%% %s')
-				.print(calculatedThreadsResults.threads.hack, calculatedThreadsResults.threads.grow, calculatedThreadsResults.threads.weaken,
+				.print(calculatedThreadsResults.threads.hackThreadCount, calculatedThreadsResults.threads.growThreadCount, calculatedThreadsResults.threads.weakenThreadCount,
 					calculatedThreadsTotal, this._formatter.percentage(this._hackPercentage))
 			this._logger.info()
 				.withIdentifier(this._batch)
@@ -192,7 +188,7 @@ class Batcher {
 			}
 
 			// Check if server has been weakened to the server minimum difficulty or not
-			if (this._calculator.targetServer.hackDifficulty! > this._calculator.targetServer.minDifficulty! + tolerance) {
+			if (this._calculator.targetServer.hackDifficulty! > this._calculator.targetServer.minDifficulty!) {
 				this._ns.print(this._calculator.targetServer.hackDifficulty!, " ", this._calculator.targetServer.minDifficulty!)
 				this._logger.warn()
 					.withIdentifier(this._batch)
@@ -230,7 +226,7 @@ class Batcher {
 		const reservationTime = batchDuration > refreshPeriod ? batchDuration : refreshPeriod + batchDuration // TODO improve less than calculation
 		this._reservations = await this._ramClient.reserveThreads({
 			name: 'weaken',
-			tickets: calculatedThreads.weaken,
+			tickets: calculatedThreads.weakenThreadCount,
 			allocationSize: enums.ScriptCost.weaken,
 			duration: reservationTime,
 			affinity: {
@@ -240,7 +236,7 @@ class Batcher {
 			}
 		}, {
 			name: 'grow',
-			tickets: calculatedThreads.grow,
+			tickets: calculatedThreads.growThreadCount,
 			allocationSize: enums.ScriptCost.grow,
 			duration: reservationTime,
 			affinity: {
@@ -250,7 +246,7 @@ class Batcher {
 			}
 		}, {
 			name: 'hack',
-			tickets: calculatedThreads.hack,
+			tickets: calculatedThreads.hackThreadCount,
 			allocationSize: enums.ScriptCost.hack,
 			duration: reservationTime,
 			affinity: {

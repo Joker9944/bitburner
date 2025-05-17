@@ -124,7 +124,8 @@ class NetNodePrinter {
 		}
 		// Hacking hints
 		if (server.moneyMax !== 0 && server.hasAdminRights) {
-			const calculator = new HGWFormulasCalculator(this._ns, mockMaxServer(server), 0.2, 0.1, 200)
+			// TODO get values from CnC Daemon
+			const calculator = new HGWFormulasCalculator(this._ns, mockMaxServer(server), 0.3, 0.1)
 			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--%s / sec, %s hacking exp / sec, %s thread usage, Value: %s')
