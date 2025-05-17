@@ -21,29 +21,37 @@ export async function main(ns: NS): Promise<void> {
 		return
 	}
 
-	// TODO list print
 	logger.logEntry()
 		.terminal()
 		.print('~~~~~~~~~~ Beginning reservations ~~~~~~~~~~')
 	logger.logEntry()
 		.terminal()
 		.print(' ')
+	let ramReservedTotal = 0
+	let ramMaxTotal = 0
 	dataEntries.forEach(entry => {
 		if (entry[1].length === 0) {
 			return
 		}
+		const ramReserved = entry[1]
+			.map(reservation => reservation.ramMB / 1000)
+			.reduce((previousValue, currentValue) => currentValue + previousValue)
+		ramReservedTotal += ramReserved
+		const ramMax = ns.getServerMaxRam(entry[0])
+		ramMaxTotal += ramMax
+		// header
 		logger.logEntry()
 			.terminal()
-			.withFormat('%s')
-			.print(entry[0])
+			.withFormat('%s %s/%s (%s)')
+			.print(entry[0], formatter.ram(ramReserved), formatter.ram(ramMax), formatter.percentage(ramReserved / ramMax))
 		logger.logEntry()
 			.terminal()
-			.print('------')
+			.print('=======================')
 		entry[1].forEach(reservation => {
 			if (reservation.timeout === undefined) {
 				logger.logEntry()
 					.terminal()
-					.withFormat('%s -> %s / ram: %s, allocation: %s')
+					.withFormat('%s (%s) ram: %s, allocation: %s')
 					.print(reservation.owner, reservation.name,
 						formatter.ram(reservation.ramMB / 1000),
 						formatter.ram(reservation.allocationSize / 1000)
@@ -52,7 +60,7 @@ export async function main(ns: NS): Promise<void> {
 				const timeout = new Date(reservation.timeout)
 				logger.logEntry()
 					.terminal()
-					.withFormat('%s -> %s / ram: %s, allocation: %s, timeout: %s')
+					.withFormat('%s (%s) ram: %s, allocation: %s, timeout: %s')
 					.print(reservation.owner, reservation.name,
 						formatter.ram(reservation.ramMB / 1000),
 						formatter.ram(reservation.allocationSize / 1000),
@@ -63,4 +71,8 @@ export async function main(ns: NS): Promise<void> {
 			.terminal()
 			.print(' ')
 	})
+	logger.logEntry()
+		.terminal()
+		.withFormat('Total %s/%s (%s)')
+		.print(formatter.ram(ramReservedTotal), formatter.ram(ramMaxTotal), formatter.percentage(ramReservedTotal / ramMaxTotal))
 }

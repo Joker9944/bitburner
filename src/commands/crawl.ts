@@ -143,11 +143,12 @@ class NetNodePrinter {
 		if (server.maxRam !== 0) {
 			this._logger.logEntry()
 				.terminal()
-				.withFormat('%s--Cores: %s, RAM: %s/%s')
+				.withFormat('%s--Cores: %s, RAM: %s/%s (%s)')
 				.print(indent(node.depth),
 					server.cpuCores,
 					this._formatter.ram(server.ramUsed),
-					this._formatter.ram(server.maxRam)
+					this._formatter.ram(server.maxRam),
+					this._formatter.percentage(server.ramUsed / server.maxRam)
 				)
 		}
 		this._logger.logEntry()
