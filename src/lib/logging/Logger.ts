@@ -24,8 +24,12 @@ export class Logger {
 		return new LogEntry(this._ns).success()
 	}
 
-	print(): LogEntry {
+	logEntry(): LogEntry {
 		return new LogEntry(this._ns)
+	}
+
+	spacer(): void {
+		new LogEntry(this._ns).print("----------")
 	}
 }
 

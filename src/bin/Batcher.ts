@@ -16,6 +16,7 @@ import {Formatter} from "/lib/logging/Formatter";
 
 const identifierPrefix = 'batcher-'
 const refreshPeriod = 60000
+const tolerance = 1e-10
 
 enum Args {
 	hackPercentageSuggestion = 'hack-percentage-suggestion',
@@ -89,39 +90,12 @@ class Batcher {
 			if (refresh) { // Refresh bounds
 				await this.refreshMaxHackPercentage()
 				await this.refreshMaxThreads()
-				this.refreshHackPercentage() // TODO this explodes. Calculates a too high percentage
-				/*
-[2025-05-17 01:39:27] INFO [15]: Calc: H 145 / G 2 / W 6 / T 153 / H% 16.58%
-[2025-05-17 01:39:27] INFO [15]:  Acc: H 145 / G 2 / W 6 / T 153 / R 153
-[2025-05-17 01:39:27] INFO [15]: Duration 26.279 seconds
-[2025-05-17 01:39:53] ----------
-[2025-05-17 01:39:53] INFO:  Max: T 154 / H% 30.00%
-[2025-05-17 01:39:53] ----------
-[2025-05-17 01:39:54] INFO [16]: Calc: H 146 / G 2 / W 6 / T 154 / H% 16.70%
-[2025-05-17 01:39:54] INFO [16]:  Acc: H 146 / G 2 / W 6 / T 154 / R 154
-[2025-05-17 01:39:54] INFO [16]: Duration 26.279 seconds
-[2025-05-17 01:40:20] WARNING [16]: Encountering security drift 1.000 > 1.000
-[2025-05-17 01:40:20] ----------
-[2025-05-17 01:40:20] WARNING [17]: Forced to renew reservations C 155 ≠ R 154
-[2025-05-17 01:40:20] INFO [17]: Calc: H 145 / G 2 / W 6 / T 153 / H% 16.58%
-[2025-05-17 01:40:20] INFO [17]:  Acc: H 145 / G 2 / W 6 / T 153 / R 153
-[2025-05-17 01:40:20] INFO [17]: Duration 26.279 seconds
-[2025-05-17 01:40:46] ----------
-[2025-05-17 01:40:46] INFO [18]: Calc: H 145 / G 2 / W 6 / T 153 / H% 16.58%
-[2025-05-17 01:40:46] INFO [18]:  Acc: H 145 / G 2 / W 6 / T 153 / R 153
-[2025-05-17 01:40:46] INFO [18]: Duration 26.176 seconds
-[2025-05-17 01:41:13] ----------
-[2025-05-17 01:41:13] INFO:  Max: T 154 / H% 30.00%
-[2025-05-17 01:41:13] ----------
-[2025-05-17 01:41:13] INFO [19]: Calc: H 146 / G 2 / W 6 / T 154 / H% 16.70%
-[2025-05-17 01:41:13] INFO [19]:  Acc: H 146 / G 2 / W 6 / T 154 / R 154
-[2025-05-17 01:41:13] INFO [19]: Duration 26.176 seconds
-				 */
+				this.refreshHackPercentage()
 
 				this._logger.info()
 					.withFormat('Max: T %s / H%% %s')
 					.print(this._maxThreads, this._formatter.percentage(this._calculator.maxHackPercentage))
-				this._logger.print().print("----------")
+				this._logger.spacer()
 
 				this._lastRefresh = now
 			}
@@ -217,7 +191,9 @@ class Batcher {
 						this._formatter.money(this._calculator.targetServer.moneyMax!))
 			}
 
-			if (this._calculator.targetServer.hackDifficulty! > this._calculator.targetServer.baseDifficulty!) {
+			// Check if server has been weakened to the server minimum difficulty or not
+			if (this._calculator.targetServer.hackDifficulty! > this._calculator.targetServer.minDifficulty! + tolerance) {
+				this._ns.print(this._calculator.targetServer.hackDifficulty!, " ", this._calculator.targetServer.minDifficulty!)
 				this._logger.warn()
 					.withIdentifier(this._batch)
 					.withFormat('Encountering security drift %s > %s')
@@ -227,7 +203,7 @@ class Batcher {
 			}
 
 			this._batch++
-			this._logger.print().print("----------")
+			this._logger.spacer()
 		}
 	}
 

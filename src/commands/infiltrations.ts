@@ -80,30 +80,30 @@ export async function main(ns: NS): Promise<void> {
 			break
 	}
 
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.print('~~~~~~~~~~ Beginning infiltrations ~~~~~~~~~~')
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.print(' ')
 	for (let i = 0; i < limit; i++) {
 		const infiltration = infiltrations[i]
 		const infiltrationData = extractInfiltrationData(infiltration)
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.withFormat('%s -> %s')
 			.print(infiltration.location.city, infiltration.location.name)
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.withFormat('Difficulty: %s, Level: %s')
 			.print(determineDifficulty(infiltration.difficulty), infiltrationData['maxClearanceLevel'])
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.withFormat('Reward: %s or %s rep / SoA %s rep')
 			.print(formatter.money(infiltration.reward.sellCash),
 				formatter.rep(infiltration.reward.tradeRep),
 				formatter.rep(infiltration.reward.SoARep))
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.print(' ')
 	}

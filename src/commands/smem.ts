@@ -39,7 +39,7 @@ export async function main(ns: NS): Promise<void> {
 				ramTotal += node.server.maxRam
 			})
 	}
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.withFormat('%s (%s/%s)')
 		.print(

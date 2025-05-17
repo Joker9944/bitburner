@@ -13,22 +13,22 @@ export async function main(ns: NS): Promise<void> {
 	const dataEntries = Object.entries(data)
 
 	if (dataEntries.length === 0) {
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.print('No threads available')
 		return
 	}
 
 	dataEntries.forEach((entry) =>
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.withFormat('%s -> %s')
 			.print(entry[0], entry[1])
 	)
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.print('======')
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.withFormat('Total -> %s')
 		.print(Object.values(data).reduce((a, b) => a + b))

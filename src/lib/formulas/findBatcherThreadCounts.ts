@@ -4,21 +4,21 @@ import * as enums from '/lib/enums'
 
 export function findBatcherThreadCounts(ns: NS, percentage: number, growThreadsSuggestion: number,
                                         player: Player, target: Server, cores: number): ResultSetThreads {
-	const mockedServer = mockServer(target)
+	const targetPredictionServer = mockServer(target)
 
 	// hack
 	const moneyPercentagePerHackThread = ns.hackAnalyze(target.hostname)
 	if (moneyPercentagePerHackThread === 0) {
 		throw new Error('Server ' + target.hostname + ' is not hackable')
 	}
-	const hackThreads = Math.ceil(percentage / moneyPercentagePerHackThread) // TODO maybe change to Math.floor
+	const hackThreads = Math.ceil(percentage / moneyPercentagePerHackThread)
 	const hackSecurityIncrease = hackThreads * enums.Security.hackIncrease
-	mockedServer.hackDifficulty! += hackSecurityIncrease
-	mockedServer.moneyAvailable! -= target.moneyMax! * moneyPercentagePerHackThread * hackThreads
+	targetPredictionServer.hackDifficulty! += hackSecurityIncrease
+	targetPredictionServer.moneyAvailable! -= target.moneyMax! * moneyPercentagePerHackThread * hackThreads
 
 	// grow
-	const targetPercentage = target.moneyMax! / mockedServer.moneyAvailable!
-	const growThreads = findGrowThreadCount(ns, targetPercentage, growThreadsSuggestion, player, mockedServer, cores)
+	const targetPercentage = target.moneyMax! / targetPredictionServer.moneyAvailable!
+	const growThreads = findGrowThreadCount(ns, targetPercentage, growThreadsSuggestion, player, targetPredictionServer, cores)
 	const growSecurityIncrease = growThreads * enums.Security.growIncrease
 
 	// weaken

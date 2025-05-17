@@ -15,32 +15,32 @@ export async function main(ns: NS): Promise<void> {
 	const dataEntries = Object.entries(data)
 
 	if (dataEntries.length === 0) {
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.print('Nothing reserved')
 		return
 	}
 
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.print('~~~~~~~~~~ Beginning reservations ~~~~~~~~~~')
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.print(' ')
 	dataEntries.forEach(entry => {
 		if (entry[1].length === 0) {
 			return
 		}
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.withFormat('%s')
 			.print(entry[0])
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.print('------')
 		entry[1].forEach(reservation => {
 			if (reservation.timeout === undefined) {
-				logger.print()
+				logger.logEntry()
 					.terminal()
 					.withFormat('%s -> %s / ram: %s, allocation: %s')
 					.print(reservation.owner, reservation.name,
@@ -49,7 +49,7 @@ export async function main(ns: NS): Promise<void> {
 					)
 			} else {
 				const timeout = new Date(reservation.timeout)
-				logger.print()
+				logger.logEntry()
 					.terminal()
 					.withFormat('%s -> %s / ram: %s, allocation: %s, timeout: %s')
 					.print(reservation.owner, reservation.name,
@@ -58,7 +58,7 @@ export async function main(ns: NS): Promise<void> {
 						timeout.toLocaleString('sv'))
 			}
 		})
-		logger.print()
+		logger.logEntry()
 			.terminal()
 			.print(' ')
 	})

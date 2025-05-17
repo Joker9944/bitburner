@@ -12,6 +12,7 @@ export async function main(ns: NS): Promise<void> {
 	await new R00terDaemon(ns).main()
 }
 
+// TODO buy servers for daemons
 export class R00terDaemon {
 	readonly ns: NS
 

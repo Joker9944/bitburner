@@ -18,7 +18,7 @@ export class HGWFormulasCalculator {
 	private _targetServer: Server
 	private readonly _resultCache: Map<number, ResultSetThreads> = new Map()
 	private _maxMoneyGain?: number
-	private _expGain?: number
+	private _maxHackExpGain?: number
 	private _hgwWait?: number
 
 	constructor(ns: NS, targetServer: Server,
@@ -35,40 +35,42 @@ export class HGWFormulasCalculator {
 		this._targetServer = targetServer
 	}
 
-	get maxHackPercentage(): number {
-		return this._maxHackPercentage
-	}
-
-	set maxHackPercentage(maxHackPercentage: number) {
-		this._maxHackPercentage = maxHackPercentage
-		this._reset()
-	}
+	// Main calculator functions
 
 	findHackingPercentage(targetThreadCount?: number): number {
 		if (targetThreadCount === undefined) {
 			return this._maxHackPercentage
 		}
-		const cachedEntry = Array.from(this._resultCache.entries())
+		const cachedResult = Array.from(this._resultCache.entries())
 			.find(entry => calculateTotalThreads(entry[1].threads) === targetThreadCount)
-		if (cachedEntry !== undefined) {
-			return cachedEntry[0]
+		if (cachedResult !== undefined) {
+			return cachedResult[0]
 		}
+		// We tage the cached suggestion or the max, whichever is smaller
+		const percentageSuggestion = Math.min(this._hackPercentageSuggestion + 0.1, this._maxHackPercentage)
+		// We do not have a cached result for this thread count
 		const result = findBatcherHackingPercentage(
 			this._ns,
 			targetThreadCount,
-			this._hackPercentageSuggestion,
-			this._maxHackPercentage,
+			percentageSuggestion,
 			this._growThreadsSuggestion,
 			this._player,
 			this._targetServer,
 			this._homeServer.cpuCores
 		)
-		this._hackPercentageSuggestion = result.percentage
-		this._growThreadsSuggestion = result.threadResult.threads.grow
 		this._resultCache.set(result.percentage, result.threadResult)
-		return result.percentage
+		if (result.percentage > this._maxHackPercentage) {
+			// Result was larger than max so we return max
+			return this._maxHackPercentage
+		} else {
+			// Result was smaller than max so we return result and setup suggestions for next run
+			this._hackPercentageSuggestion = result.percentage
+			this._growThreadsSuggestion = result.threadResult.threads.grow
+			return result.percentage
+		}
 	}
 
+	// TODO does this take max possible hack percentage into account?
 	findThreadCounts(hackPercentage?: number): ResultSetThreads {
 		if (hackPercentage === undefined) {
 			hackPercentage = this._maxHackPercentage
@@ -91,12 +93,14 @@ export class HGWFormulasCalculator {
 		return result
 	}
 
-	calculateTUPS(hackPercentage?: number): number {
-		return calculateTotalThreads(this.findThreadCounts(hackPercentage).threads) / (this.determineHWGWait() / 1000)
-	}
+	// Auxiliary calculator functions
 
 	calculateTotalThreads(hackPercentage?: number): number {
 		return calculateTotalThreads(this.findThreadCounts(hackPercentage).threads)
+	}
+
+	calculateTUPS(hackPercentage?: number): number {
+		return calculateTotalThreads(this.findThreadCounts(hackPercentage).threads) / (this.determineHWGWait() / 1000)
 	}
 
 	calculateMoneyGain(hackPercentage?: number): number {
@@ -115,21 +119,20 @@ export class HGWFormulasCalculator {
 		return this.calculateMoneyGain(hackPercentage) / (this.determineHWGWait() / 1000)
 	}
 
-	calculateExpGain(hackPercentage?: number): number {
+	calculateHackExpGain(hackPercentage?: number): number {
 		if (hackPercentage !== undefined) {
 			const expPerThread = this._ns.formulas.hacking.hackExp(this._targetServer, this._player)
 			return calculateTotalThreads(this.findThreadCounts(hackPercentage).threads) * expPerThread
 		}
-		if (this._expGain === undefined) {
+		if (this._maxHackExpGain === undefined) {
 			const expPerThread = this._ns.formulas.hacking.hackExp(this._targetServer, this._player)
-			this._expGain = calculateTotalThreads(this.findThreadCounts().threads) * expPerThread
+			this._maxHackExpGain = calculateTotalThreads(this.findThreadCounts().threads) * expPerThread
 		}
-		return this._expGain
+		return this._maxHackExpGain
 	}
 
-	// TODO this cannot be right - The total amount of threads needs to be taken into account
-	calculateExpPerSecond(hackPercentage?: number): number {
-		return this.calculateExpGain(hackPercentage) / (this.determineHWGWait() / 1000)
+	calculateHackExpPerSecond(hackPercentage?: number): number {
+		return this.calculateHackExpGain(hackPercentage) / (this.determineHWGWait() / 1000)
 	}
 
 	determineHWGWait(): number {
@@ -141,6 +144,19 @@ export class HGWFormulasCalculator {
 			].reduce((a, b) => Math.max(a, b)) + 200
 		}
 		return this._hgwWait
+	}
+
+	// Accessor functions
+
+	get maxHackPercentage(): number {
+		return this._maxHackPercentage
+	}
+
+	set maxHackPercentage(maxHackPercentage: number) {
+		// Trash cached old max results
+		this._maxMoneyGain = undefined
+		this._maxHackExpGain = undefined
+		this._maxHackPercentage = maxHackPercentage
 	}
 
 	public get player() {
@@ -155,17 +171,19 @@ export class HGWFormulasCalculator {
 		return this._targetServer
 	}
 
+	// Update functions
+
 	update(): void {
 		this._player = this._ns.getPlayer()
 		this._homeServer = this._ns.getServer("home")
 		this._targetServer = this._ns.getServer(this._targetServer.hostname)
-		this._reset()
+		this._clear()
 	}
 
-	private _reset(): void {
+	private _clear(): void {
 		this._resultCache.clear()
 		this._maxMoneyGain = undefined
-		this._expGain = undefined
+		this._maxHackExpGain = undefined
 		this._hgwWait = undefined
 	}
 }

@@ -40,7 +40,7 @@ export enum LaunchpadScripts {
 
 export enum Security {
 	hackIncrease = 0.002,
-	growIncrease = 0.004,
+	growIncrease = 0.002,
 }
 
 export enum ScriptCost {

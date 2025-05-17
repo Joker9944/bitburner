@@ -38,10 +38,10 @@ export async function main(ns: NS): Promise<void> {
 	const logger = new Logger(ns)
 	const printer = new NetNodePrinter(ns, formatter, logger)
 
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.print('~~~~~~~~~~ Beginning crawl ~~~~~~~~~~')
-	logger.print()
+	logger.logEntry()
 		.terminal()
 		.print(' ')
 	if (watch) {
@@ -81,20 +81,20 @@ class NetNodePrinter {
 
 	printNetNode(node: NetNode): void {
 		// Server header
-		this._logger.print()
+		this._logger.logEntry()
 			.terminal()
 			.withFormat('%s%s %s')
 			.print(indent(node.depth), header(this.hackingLevel, this.ownedPortBreakersCount, node.server), node.server.hostname)
 		// Backdoor hint
 		if (node.server.hasAdminRights && !node.server.purchasedByPlayer && !node.server.backdoorInstalled) {
-			this._logger.print()
+			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--%s')
 				.print(indent(node.depth), 'Backdoor can be installed')
 		}
 		// Backdoor requirements
 		if (!node.server.hasAdminRights) {
-			this._logger.print()
+			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--Hacking: %s/%s, Ports: %s/%s')
 				.print(indent(node.depth),
@@ -118,7 +118,7 @@ class NetNodePrinter {
 			data.push(node.server.serverGrowth)
 		}
 		if (format.length > 0) {
-			this._logger.print()
+			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--' + format.join(", "))
 				.print(indent(node.depth), ...data)
@@ -126,19 +126,19 @@ class NetNodePrinter {
 		// Hacking hints
 		if (node.server.moneyMax !== 0 && node.server.hasAdminRights) {
 			const calculator = new HGWFormulasCalculator(this._ns, mockMaxServer(node.server), 0.2, 0.1, 200)
-			this._logger.print()
+			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--%s / sec, %s hacking exp / sec, %s thread usage, Value: %s')
 				.print(indent(node.depth),
 					this._formatter.money(calculator.calculateMoneyPerSecond()),
-					this._formatter.exp(calculator.calculateExpPerSecond()),
+					this._formatter.exp(calculator.calculateHackExpPerSecond()),
 					calculator.calculateTotalThreads(),
 					this._formatter.serverValue(calculateServerValue(calculator))
 				)
 		}
 		// Server specs
 		if (node.server.maxRam !== 0) {
-			this._logger.print()
+			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--Cores: %s, RAM: %s/%s')
 				.print(indent(node.depth),
@@ -147,7 +147,7 @@ class NetNodePrinter {
 					this._formatter.ram(node.server.maxRam)
 				)
 		}
-		this._logger.print()
+		this._logger.logEntry()
 			.terminal()
 			.print(' ')
 	}
