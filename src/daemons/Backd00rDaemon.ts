@@ -28,26 +28,33 @@ export class Backd00rDaemon {
 		this.logger = new Logger(ns)
 		this.toaster = new Toaster(ns)
 
-		this.execServerHostname = ns.getHostname()
+		this.execServerHostname = 'home'
 
-		this.net = getNetNodes(ns, this.execServerHostname).filter(node => !node.server.purchasedByPlayer)
-		this.backdoorInstalledServers = this.net.filter(node => node.server.backdoorInstalled).length
+		this.net = getNetNodes(ns, this.execServerHostname)
+			.filter(node => !ns.getServer(node.hostname).purchasedByPlayer)
+		this.backdoorInstalledServers = this.net.filter(node => !ns.getServer(node.hostname).backdoorInstalled).length
 	}
 
 	async main(): Promise<void> {
 		while (this.backdoorInstalledServers < this.net.length) {
-			const backdoorInstallableServers = this.net.filter(node => !node.server.backdoorInstalled && node.server.hasAdminRights)
+			const backdoorInstallableServers = this.net
+				.filter(node => {
+					const server = this.ns.getServer(node.hostname)
+					!server.backdoorInstalled && server.hasAdminRights
+				})
 				.sort((a, b) => {
-					const includesA = backdoorPropertyServers.includes(a.server.hostname)
-					const includesB = backdoorPropertyServers.includes(b.server.hostname)
+					const serverA = this.ns.getServer(a.hostname)
+					const serverB = this.ns.getServer(b.hostname)
+					const includesA = backdoorPropertyServers.includes(serverA.hostname)
+					const includesB = backdoorPropertyServers.includes(serverB.hostname)
 					if (includesA && includesB) {
-						return (a.server.requiredHackingSkill ?? 0) - (b.server.requiredHackingSkill ?? 0)
+						return (serverA.requiredHackingSkill ?? 0) - (serverB.requiredHackingSkill ?? 0)
 					} else if (includesA) {
 						return -1
 					} else if (includesB) {
 						return 1
 					} else {
-						return (a.server.requiredHackingSkill ?? 0) - (b.server.requiredHackingSkill ?? 0)
+						return (serverA.requiredHackingSkill ?? 0) - (serverB.requiredHackingSkill ?? 0)
 					}
 				})
 			if (backdoorInstallableServers.length > 0) {
@@ -56,7 +63,6 @@ export class Backd00rDaemon {
 			} else {
 				await this.ns.sleep(10000)
 			}
-			this.net.forEach((node) => node.update())
 		}
 
 		this.logger.info()
@@ -64,16 +70,15 @@ export class Backd00rDaemon {
 		this.toaster.success('Installed a backdoor on all servers', 'backd00r')
 	}
 
-	async backdoor(node: NetNode): Promise<void> {
-		node.searchPathUp(this.execServerHostname).forEach(path => {
-			this.ns.singularity.connect(path.server.hostname)
+	async backdoor(target: NetNode): Promise<void> {
+		target.searchPathUp(this.execServerHostname).forEach(path => {
+			this.ns.singularity.connect(path.hostname)
 		})
 		await this.ns.singularity.installBackdoor()
 		this.ns.singularity.connect(this.execServerHostname)
-		const hostname = node.server.hostname
 		this.logger.info()
-			.withIdentifier(hostname)
+			.withIdentifier(target.hostname)
 			.print('Installed backdoor')
-		this.toaster.info('Installed backdoor', hostname)
+		this.toaster.info('Installed backdoor', target.hostname)
 	}
 }

@@ -1,5 +1,5 @@
 import {AutocompleteData, NS} from '@ns'
-import {getNetNodes, getNetNode} from 'lib/NetNode'
+import {getNetNodes} from 'lib/NetNode'
 import {ArgsSchema} from '/lib/ArgsSchema'
 import {Formatter} from "/lib/logging/Formatter";
 import {Logger} from "/lib/logging/Logger";
@@ -28,15 +28,16 @@ export async function main(ns: NS): Promise<void> {
 	let ramTotal = 0
 	// TODO List print
 	if (args['home']) {
-		const homeNode = getNetNode(ns, 'home')
-		ramUsed = homeNode.server.ramUsed
-		ramTotal = homeNode.server.maxRam
+		const home = ns.getServer('home')
+		ramUsed = home.ramUsed
+		ramTotal = home.maxRam
 	} else {
 		getNetNodes(ns)
-			.filter((node) => node.server.hasAdminRights)
-			.forEach((node) => {
-				ramUsed += node.server.ramUsed
-				ramTotal += node.server.maxRam
+			.map(node => ns.getServer(node.hostname))
+			.filter(server => server.hasAdminRights)
+			.forEach(server => {
+				ramUsed += server.ramUsed
+				ramTotal += server.maxRam
 			})
 	}
 	logger.logEntry()

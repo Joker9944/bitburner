@@ -46,12 +46,10 @@ export async function main(ns: NS): Promise<void> {
 		.print(' ')
 	if (watch) {
 		const netTree = getNetTree(ns, origin, maxDepth)
-		const netNodes = netTree.flat()
 		// noinspection InfiniteLoopJS
 		while (true) {
 			travelNetTree(netTree, printer)
 			await ns.sleep(2000)
-			netNodes.forEach((node) => node.update())
 		}
 	} else {
 		travelNetTree(getNetTree(ns, origin, maxDepth), printer)
@@ -80,42 +78,43 @@ class NetNodePrinter {
 	}
 
 	printNetNode(node: NetNode): void {
+		const server = this._ns.getServer(node.hostname)
 		// Server header
 		this._logger.logEntry()
 			.terminal()
 			.withFormat('%s%s %s')
-			.print(indent(node.depth), header(this.hackingLevel, this.ownedPortBreakersCount, node.server), node.server.hostname)
+			.print(indent(node.depth), header(this.hackingLevel, this.ownedPortBreakersCount, server), server.hostname)
 		// Backdoor hint
-		if (node.server.hasAdminRights && !node.server.purchasedByPlayer && !node.server.backdoorInstalled) {
+		if (server.hasAdminRights && !server.purchasedByPlayer && !server.backdoorInstalled) {
 			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--%s')
 				.print(indent(node.depth), 'Backdoor can be installed')
 		}
 		// Backdoor requirements
-		if (!node.server.hasAdminRights) {
+		if (!server.hasAdminRights) {
 			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--Hacking: %s/%s, Ports: %s/%s')
 				.print(indent(node.depth),
-					this.hackingLevel, node.server.requiredHackingSkill,
-					this.ownedPortBreakersCount, node.server.numOpenPortsRequired)
+					this.hackingLevel, server.requiredHackingSkill,
+					this.ownedPortBreakersCount, server.numOpenPortsRequired)
 		}
 		// Hacking specs
 		const format: string[] = [];
 		const data: unknown[] = [];
-		if (node.server.hackDifficulty !== undefined && node.server.minDifficulty !== undefined) {
+		if (server.hackDifficulty !== undefined && server.minDifficulty !== undefined) {
 			format.push("Security: %s/%s")
-			data.push(this._formatter.security(node.server.hackDifficulty - node.server.minDifficulty))
-			data.push(this._formatter.security(100 - node.server.minDifficulty))
+			data.push(this._formatter.security(server.hackDifficulty - server.minDifficulty))
+			data.push(this._formatter.security(100 - server.minDifficulty))
 		}
-		if (node.server.moneyAvailable !== undefined && node.server.moneyMax !== undefined) {
+		if (server.moneyAvailable !== undefined && server.moneyMax !== undefined) {
 			format.push("Money: %s/%s")
-			data.push(this._formatter.money(node.server.moneyAvailable), this._formatter.money(node.server.moneyMax))
+			data.push(this._formatter.money(server.moneyAvailable), this._formatter.money(server.moneyMax))
 		}
-		if (node.server.serverGrowth !== undefined) {
+		if (server.serverGrowth !== undefined) {
 			format.push("Growth rate: %s")
-			data.push(node.server.serverGrowth)
+			data.push(server.serverGrowth)
 		}
 		if (format.length > 0) {
 			this._logger.logEntry()
@@ -124,8 +123,8 @@ class NetNodePrinter {
 				.print(indent(node.depth), ...data)
 		}
 		// Hacking hints
-		if (node.server.moneyMax !== 0 && node.server.hasAdminRights) {
-			const calculator = new HGWFormulasCalculator(this._ns, mockMaxServer(node.server), 0.2, 0.1, 200)
+		if (server.moneyMax !== 0 && server.hasAdminRights) {
+			const calculator = new HGWFormulasCalculator(this._ns, mockMaxServer(server), 0.2, 0.1, 200)
 			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--%s / sec, %s hacking exp / sec, %s thread usage, Value: %s')
@@ -137,14 +136,14 @@ class NetNodePrinter {
 				)
 		}
 		// Server specs
-		if (node.server.maxRam !== 0) {
+		if (server.maxRam !== 0) {
 			this._logger.logEntry()
 				.terminal()
 				.withFormat('%s--Cores: %s, RAM: %s/%s')
 				.print(indent(node.depth),
-					node.server.cpuCores,
-					this._formatter.ram(node.server.ramUsed),
-					this._formatter.ram(node.server.maxRam)
+					server.cpuCores,
+					this._formatter.ram(server.ramUsed),
+					this._formatter.ram(server.maxRam)
 				)
 		}
 		this._logger.logEntry()

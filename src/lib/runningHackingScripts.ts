@@ -15,11 +15,11 @@ export async function runningHackingScripts(ns: NS, targetHostname: string): Pro
 	const logger = new Logger(ns)
 
 	const processesByHostname = getNetNodes(ns).map(node => {
-		const processes = ns.ps(node.server.hostname)
+		const processes = ns.ps(node.hostname)
 			.filter(process => process.args.includes(targetHostname))
 			.filter(process => launchpadScripts.includes(process.filename))
 		return {
-			hostname: node.server.hostname,
+			hostname: node.hostname,
 			processes: processes,
 		}
 	}).filter(entry => entry.processes.length > 0)

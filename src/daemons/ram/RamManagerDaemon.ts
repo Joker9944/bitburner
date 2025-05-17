@@ -131,8 +131,10 @@ class RamManagerDaemon {
 	}
 
 	updateRamTable(): void {
-		getNetNodes(this._ns).filter(node => node.server.hasAdminRights)
-			.forEach(node => this._ramTable[node.server.hostname] = node.server.maxRam * 1000)
+		getNetNodes(this._ns)
+			.map(node => this._ns.getServer(node.hostname))
+			.filter(server => server.hasAdminRights)
+			.forEach(server => this._ramTable[server.hostname] = server.maxRam * 1000)
 	}
 
 	updateContinuousReservations(): void {

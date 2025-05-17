@@ -14,9 +14,9 @@ export async function main(ns: NS): Promise<void> {
 
 	const origin = ns.getHostname()
 	const netNodes = getNetNodes(ns)
-	const targetNode = netNodes.find((node) => node.server.hostname === target)
+	const targetNode = netNodes.find((node) => node.hostname === target)
 	if (targetNode !== undefined) {
-		targetNode.searchPathUp(origin).forEach(node => ns.singularity.connect(node.server.hostname))
+		targetNode.searchPathUp(origin).forEach(node => ns.singularity.connect(node.hostname))
 	} else {
 		new Logger(ns).error().terminal().withFormat('Could not find %s').print(target)
 	}

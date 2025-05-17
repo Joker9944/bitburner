@@ -6,7 +6,7 @@ const batcherScripts = Object.values(enums.BatcherScripts) as string[]
 
 export async function main(ns: NS): Promise<void> {
 	const execServerHostname = ns.getHostname()
-	const processes = getNetNodes(ns, execServerHostname).flatMap(node => ns.ps(node.server.hostname)
+	const processes = getNetNodes(ns, execServerHostname).flatMap(node => ns.ps(node.hostname)
 		.filter(process => batcherScripts.includes(process.filename)))
 	processes.forEach(process => ns.kill(process.pid))
 }

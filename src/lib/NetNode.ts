@@ -1,4 +1,4 @@
-import {NS, Server} from '@ns'
+import {NS} from '@ns'
 
 export function getNetTree(ns: NS, origin = 'home', maxDepth = -1): NetNode {
 	return buildNetNode(ns, origin, origin, 0, maxDepth)
@@ -16,36 +16,31 @@ function buildNetNode(ns: NS, parent: string, current: string, depth: number, ma
 	const children = ns.scan(current).filter((hostname) => hostname != parent)
 	if (children.length > 0 && (maxDepth === -1 || depth < maxDepth)) {
 		const childNodes: NetNode[] = children.map((child) => buildNetNode(ns, current, child, depth + 1, maxDepth))
-		const parentNode = new NetNode(ns, ns.getServer(current), childNodes, depth, parent === current)
+		const parentNode = new NetNode(ns, current, childNodes, depth, parent === current)
 		childNodes.forEach((node) => (node.parent = parentNode))
 		return parentNode
 	} else {
-		return new NetNode(ns, ns.getServer(current), [], depth, parent === current)
+		return new NetNode(ns, current, [], depth, parent === current)
 	}
 }
 
 export class NetNode {
 	private readonly _ns: NS
 
-	private _server: Server
-
+	readonly hostname: string
 	parent?: NetNode
 	readonly children: NetNode[]
 	readonly depth: number
 	readonly netRoot: boolean
 
-	constructor(ns: NS, server: Server, children: NetNode[], depth: number, netRoot: boolean) {
+	constructor(ns: NS, hostname: string, children: NetNode[], depth: number, netRoot: boolean) {
 		this._ns = ns
 
-		this._server = server
+		this.hostname = hostname
 
 		this.children = children
 		this.depth = depth
 		this.netRoot = netRoot
-	}
-
-	public get server() {
-		return this._server
 	}
 
 	flat(): NetNode[] {
@@ -59,7 +54,7 @@ export class NetNode {
 	}
 
 	searchPathUp(destinationHostname: string): NetNode[] {
-		if (this._server.hostname === destinationHostname) {
+		if (this.hostname === destinationHostname) {
 			return [this]
 		} else if (this.parent !== undefined) {
 			const path = this.parent?.searchPathUp(destinationHostname)
@@ -69,9 +64,5 @@ export class NetNode {
 			// we are at root
 			throw new Error('searchPathDown not implemented yet')
 		}
-	}
-
-	update() {
-		this._server = this._ns.getServer(this.server.hostname)
 	}
 }

@@ -1,4 +1,4 @@
-import {NS} from '@ns'
+import {NS, Server} from '@ns'
 import {Logger} from 'lib/logging/Logger'
 import {Toaster} from 'lib/logging/Toaster'
 import {getNetNodes, NetNode} from 'lib/NetNode'
@@ -33,7 +33,14 @@ export class R00terDaemon {
 		this.execServerHostname = ns.getHostname()
 
 		this.net = getNetNodes(ns, this.execServerHostname)
-		this.rootedServersCount = this.net.filter((node) => node.server.hasAdminRights).length
+		this.rootedServersCount = this.net
+			.map(node => ns.getServer(node.hostname))
+			.filter(server => server.hasAdminRights)
+			.length
+		this.logger
+			.info()
+			.withFormat('%s server(s) already rooted')
+			.print(this.rootedServersCount)
 	}
 
 	async main(): Promise<void> {
@@ -41,8 +48,13 @@ export class R00terDaemon {
 			const hackingLevel = this.ns.getHackingLevel()
 			const ownedPortBreakersCount = this.countPortBreakerFiles()
 
-			const hackingSkillsMet = this.net.filter(node => !node.server.hasAdminRights && hackingLevel >= (node.server.requiredHackingSkill ?? 0))
-			const hackableServers = hackingSkillsMet.filter(node => ownedPortBreakersCount >= (node.server.numOpenPortsRequired ?? 0))
+			const hackingSkillsMet = this.net
+				.map(node => this.ns.getServer(node.hostname))
+				.filter(server => !server.hasAdminRights)
+				.filter(server => server.requiredHackingSkill !== undefined)
+				.filter(server => hackingLevel >= server.requiredHackingSkill!)
+			const hackableServers = hackingSkillsMet
+				.filter(server => ownedPortBreakersCount >= (server.numOpenPortsRequired ?? 0))
 
 			if (hackingSkillsMet.length > hackableServers.length) {
 				this.logger.warn()
@@ -58,11 +70,9 @@ export class R00terDaemon {
 			} else {
 				await this.ns.sleep(10000)
 			}
-			this.net.forEach((node) => node.update())
 		}
 
-		this.logger.info()
-			.print('Rooted all servers')
+		this.logger.info().print('Rooted all servers')
 		this.toaster.success('Rooted all servers', 'r00ter')
 	}
 
@@ -70,33 +80,32 @@ export class R00terDaemon {
 		return portBreakerFiles.filter((portBreaker) => this.ns.fileExists(portBreaker, this.execServerHostname)).length
 	}
 
-	root(node: NetNode): void {
-		const hostname = node.server.hostname
+	root(server: Server): void {
 		if (this.ns.fileExists(enums.PortBreakerFiles.brutessh, this.execServerHostname)) {
-			this.ns.brutessh(hostname)
+			this.ns.brutessh(server.hostname)
 		}
 		if (this.ns.fileExists(enums.PortBreakerFiles.ftpcrack, this.execServerHostname)) {
-			this.ns.ftpcrack(hostname)
+			this.ns.ftpcrack(server.hostname)
 		}
 		if (this.ns.fileExists(enums.PortBreakerFiles.relaysmtp, this.execServerHostname)) {
-			this.ns.relaysmtp(hostname)
+			this.ns.relaysmtp(server.hostname)
 		}
 		if (this.ns.fileExists(enums.PortBreakerFiles.httpworm, this.execServerHostname)) {
-			this.ns.httpworm(hostname)
+			this.ns.httpworm(server.hostname)
 		}
 		if (this.ns.fileExists(enums.PortBreakerFiles.sqlinject, this.execServerHostname)) {
-			this.ns.sqlinject(hostname)
+			this.ns.sqlinject(server.hostname)
 		}
-		this.ns.nuke(hostname)
+		this.ns.nuke(server.hostname)
 		this.rootedServersCount++
 
 		this.logger.info()
-			.withIdentifier(hostname)
+			.withIdentifier(server.hostname)
 			.print('Rooted')
-		this.toaster.info('Rooted', hostname)
+		this.toaster.info('Rooted', server.hostname)
 	}
 
-	copyLaunchpad(node: NetNode): void {
-		this.ns.scp(launchpadScripts, node.server.hostname, this.execServerHostname)
+	copyLaunchpad(server: Server): void {
+		this.ns.scp(launchpadScripts, server.hostname, this.execServerHostname)
 	}
 }

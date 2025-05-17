@@ -14,10 +14,10 @@ export async function main(ns: NS): Promise<void> {
 
 	const origin = ns.getHostname()
 	const netNodes = getNetNodes(ns)
-	const targetNode = netNodes.find((node) => node.server.hostname === target)
+	const targetNode = netNodes.find((node) => node.hostname === target)
 	if (targetNode !== undefined) {
 		new Logger(ns).logEntry().terminal().print(targetNode.searchPathUp(origin)
-			.map((node) => node.server.hostname)
+			.map((node) => node.hostname)
 			.join(' -> ')
 		)
 	} else {
