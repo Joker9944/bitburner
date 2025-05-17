@@ -46,16 +46,16 @@ class Fluffer {
 		this._logger = new Logger(ns)
 		this._toaster = new Toaster(ns)
 
-		this._calculator = new FlufferCalculator(ns, targetServerHostname)
+		this._calculator = new FlufferCalculator(ns, ns.getServer(targetServerHostname))
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
 		this._broadcastClient = createBroadcastClient(ns, enums.PortIndex.cncBroadcasting)
 	}
 
 	async main(): Promise<void> {
-		await runningHackingScripts(this._ns, this._calculator.targetNode.server.hostname)
+		await runningHackingScripts(this._ns, this._calculator.targetServer.hostname)
 
 		let weakenBatch = 1
-		while (this._calculator.targetNode.server.hackDifficulty! > this._calculator.targetNode.server.minDifficulty!) {
+		while (this._calculator.targetServer.hackDifficulty! > this._calculator.targetServer.minDifficulty!) {
 			const maxThreads = await this.determineMaxThreads()
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
 
@@ -84,14 +84,14 @@ class Fluffer {
 			const reservedThreads = calculateTotalTickets(reservation)
 
 			const startedThreads = execReservations(this._ns, reservation, enums.LaunchpadScripts.weaken,
-				this._calculator.targetNode.server.hostname);
+				this._calculator.targetServer.hostname);
 
 			if (startedThreads !== calculatedThreads) {
 				this._logger.error()
 					.withIdentifier('weaken-' + weakenBatch)
 					.withFormat('Started threads do not match calculated total threads %s != %s')
 					.print(startedThreads, calculatedThreads)
-				this._toaster.error('Started thread mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Started thread mismatch', this._calculator.targetServer.hostname)
 			}
 
 			if (startedThreads !== reservedThreads) {
@@ -99,14 +99,14 @@ class Fluffer {
 					.withIdentifier('weaken-' + weakenBatch)
 					.withFormat('Started threads do not match reserved threads %s != %s')
 					.print(startedThreads, reservedThreads)
-				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Reservation mismatch', this._calculator.targetServer.hostname)
 			}
-			const exceptedSecurity = this._calculator.targetNode.server.hackDifficulty! - this._calculator.targetNode.server.minDifficulty! - calculatedThreads * securityDecrease
+			const exceptedSecurity = this._calculator.targetServer.hackDifficulty! - this._calculator.targetServer.minDifficulty! - calculatedThreads * securityDecrease
 			this._logger.info()
 				.withIdentifier('weaken-' + weakenBatch)
 				.withFormat('Excepted outcome %s/%s')
 				.print(this._formatter.security(Math.max(exceptedSecurity, 0)),
-					this._formatter.security(100 - this._calculator.targetNode.server.minDifficulty!)
+					this._formatter.security(100 - this._calculator.targetServer.minDifficulty!)
 				)
 			this._logger.info()
 				.withIdentifier('weaken-' + weakenBatch)
@@ -119,20 +119,20 @@ class Fluffer {
 
 			await this._ns.sleep(wait)
 
-			this._calculator.refresh()
+			this._calculator.update()
 
 			this._logger.info()
 				.withIdentifier('weaken-' + weakenBatch)
 				.withFormat('Actual outcome: %s/%s')
-				.print(this._formatter.security(this._calculator.targetNode.server.hackDifficulty! - this._calculator.targetNode.server.minDifficulty!),
-					this._formatter.security(100 - this._calculator.targetNode.server.minDifficulty!)
+				.print(this._formatter.security(this._calculator.targetServer.hackDifficulty! - this._calculator.targetServer.minDifficulty!),
+					this._formatter.security(100 - this._calculator.targetServer.minDifficulty!)
 				)
 
 			weakenBatch++
 		}
 
 		let growBatch = 1
-		while (this._calculator.targetNode.server.moneyAvailable! < this._calculator.targetNode.server.moneyMax!) {
+		while (this._calculator.targetServer.moneyAvailable! < this._calculator.targetServer.moneyMax!) {
 			const maxThreads = await this.determineMaxThreads()
 			const calculatedThreadsGrow = Math.floor(maxThreads * 0.9) // TODO find a way to improve this
 			const securityDecrease = this._calculator.calculateSecurityDecrease()
@@ -166,9 +166,9 @@ class Fluffer {
 			const reservedThreadsTotal = calculateTotalTickets(Object.values(reservations).flat())
 
 			const startedThreadsWeaken = execReservations(this._ns, reservations.weaken, enums.LaunchpadScripts.weaken,
-				this._calculator.targetNode.server.hostname);
+				this._calculator.targetServer.hostname);
 			const startedThreadsGrow = execReservations(this._ns, reservations.grow, enums.LaunchpadScripts.grow,
-				this._calculator.targetNode.server.hostname);
+				this._calculator.targetServer.hostname);
 			const startedThreadsTotal = startedThreadsWeaken + startedThreadsGrow
 
 			if (startedThreadsTotal !== calculatedTotal) {
@@ -176,7 +176,7 @@ class Fluffer {
 					.withIdentifier('grow-' + growBatch)
 					.withFormat('Started threads do not match calculated total threads %s != %s')
 					.print(startedThreadsTotal, calculatedTotal)
-				this._toaster.error('Started thread mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Started thread mismatch', this._calculator.targetServer.hostname)
 			}
 
 			if (startedThreadsTotal !== reservedThreadsTotal) {
@@ -184,7 +184,7 @@ class Fluffer {
 					.withIdentifier('grow-' + growBatch)
 					.withFormat('Started threads do not match reserved threads %s != %s')
 					.print(startedThreadsTotal, reservedThreadsTotal)
-				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Reservation mismatch', this._calculator.targetServer.hostname)
 			}
 
 			this._logger.info()
@@ -198,13 +198,13 @@ class Fluffer {
 
 			await this._ns.sleep(wait)
 
-			this._calculator.refresh()
+			this._calculator.update()
 
 			this._logger.info() // TODO implement outcome prediction
 				.withIdentifier('grow-' + growBatch)
 				.withFormat('Outcome: %s/%s')
-				.print(this._formatter.money(this._calculator.targetNode.server.moneyAvailable!),
-					this._formatter.money(this._calculator.targetNode.server.moneyMax!)
+				.print(this._formatter.money(this._calculator.targetServer.moneyAvailable!),
+					this._formatter.money(this._calculator.targetServer.moneyMax!)
 				)
 
 			growBatch++

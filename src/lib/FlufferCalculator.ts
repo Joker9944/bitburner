@@ -1,50 +1,59 @@
-import {NetNode} from "/lib/NetNode";
-import {NS, Player} from "@ns";
-import {getNetNode} from '/lib/NetNode'
-
+import {NS, Player, Server} from "@ns";
 
 export class FlufferCalculator {
-	homeNode: NetNode
-	targetNode: NetNode
-	player: Player
-	cores: number
 	private readonly _ns: NS
 
-	constructor(ns: NS, targetServerHostname: string) {
+	private _player: Player
+	private _homeServer: Server
+	private _targetServer: Server
+
+	constructor(ns: NS, targetServer: Server) {
 		this._ns = ns
 
-		this.homeNode = getNetNode(ns, 'home')
-		this.targetNode = getNetNode(ns, targetServerHostname)
-		this.player = ns.getPlayer()
-		this.cores = ns.getServer('home').cpuCores
+		this._player = ns.getPlayer()
+		this._homeServer = ns.getServer("home")
+		this._targetServer = targetServer
 	}
 
 	calculateSecurityDecrease(): number {
-		return this._ns.weakenAnalyze(1, this.cores)
+		return this._ns.weakenAnalyze(1, this._homeServer.cpuCores)
 	}
 
 	calculateNeededWeakenThreads(securityDecrease: number): number {
-		const offset = this.targetNode.server.hackDifficulty! - this.targetNode.server.minDifficulty!
+		const offset = this._targetServer.hackDifficulty! - this._targetServer.minDifficulty!
 		return Math.ceil(offset / securityDecrease)
 	}
 
 	determineWWait(): number {
-		return this._ns.formulas.hacking.weakenTime(this.targetNode.server, this.player)
+		return this._ns.formulas.hacking.weakenTime(this._targetServer, this._player)
 	}
 
 	determineWGWait(): number {
 		return [
-			this._ns.formulas.hacking.growTime(this.targetNode.server, this.player),
-			this._ns.formulas.hacking.weakenTime(this.targetNode.server, this.player),
+			this._ns.formulas.hacking.growTime(this._targetServer, this._player),
+			this._ns.formulas.hacking.weakenTime(this._targetServer, this._player),
 		].reduce((a, b) => Math.max(a, b))
 	}
 
 	ownsAdditionalCores(): boolean {
-		return this.homeNode.server.cpuCores > 1
+		return this._homeServer.cpuCores > 1
 	}
 
-	refresh(): void {
-		this.targetNode.refresh()
-		this.player = this._ns.getPlayer()
+	public get player() {
+		return this._player
+	}
+
+	public get homeServer() {
+		return this._homeServer
+	}
+
+	public get targetServer() {
+		return this._targetServer
+	}
+
+	update(): void {
+		this._player = this._ns.getPlayer()
+		this._homeServer = this._ns.getServer("home")
+		this._targetServer = this._ns.getServer(this._targetServer.hostname)
 	}
 }

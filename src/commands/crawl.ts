@@ -51,7 +51,7 @@ export async function main(ns: NS): Promise<void> {
 		while (true) {
 			travelNetTree(netTree, printer)
 			await ns.sleep(2000)
-			netNodes.forEach((node) => node.refresh())
+			netNodes.forEach((node) => node.update())
 		}
 	} else {
 		travelNetTree(getNetTree(ns, origin, maxDepth), printer)
@@ -125,16 +125,14 @@ class NetNodePrinter {
 		}
 		// Hacking hints
 		if (node.server.moneyMax !== 0 && node.server.hasAdminRights) {
-			const mockedServer = mockMaxServer(node.server)
-			const mockedNode = node.mockNode(mockedServer)
-			const calculator = new HGWFormulasCalculator(this._ns, mockedNode, 0.2, 0.1, 200)
+			const calculator = new HGWFormulasCalculator(this._ns, mockMaxServer(node.server), 0.2, 0.1, 200)
 			this._logger.print()
 				.terminal()
 				.withFormat('%s--%s / sec, %s hacking exp / sec, %s thread usage, Value: %s')
 				.print(indent(node.depth),
-					this._formatter.money(calculator.calculateMPS()),
-					this._formatter.exp(calculator.calculateEPS()),
-					calculator.calculateTU(),
+					this._formatter.money(calculator.calculateMoneyPerSecond()),
+					this._formatter.exp(calculator.calculateExpPerSecond()),
+					calculator.calculateTotalThreads(),
 					this._formatter.serverValue(calculateServerValue(calculator))
 				)
 		}

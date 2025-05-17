@@ -57,7 +57,7 @@ export class R00terDaemon {
 			} else {
 				await this.ns.sleep(10000)
 			}
-			this.net.forEach((node) => node.refresh())
+			this.net.forEach((node) => node.update())
 		}
 
 		this.logger.info()

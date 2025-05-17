@@ -17,25 +17,23 @@ export async function main(ns: NS): Promise<void> {
 	const logger = new Logger(ns)
 
 	const args = ns.flags([])
-	const targetServerHostname = positionalArgument(args, 0, 'n00dles') as string
-	const targetNode = getNetNode(ns, targetServerHostname)
-	if (targetNode.server.hackDifficulty! > targetNode.server.minDifficulty! ||
-		targetNode.server.moneyAvailable! < targetNode.server.moneyMax!) {
+	const targetServer = ns.getServer(positionalArgument(args, 0, 'n00dles') as string)
+	if (targetServer.hackDifficulty! > targetServer.minDifficulty! || targetServer.moneyAvailable! < targetServer.moneyMax!) {
 		logger.info()
-			.withIdentifier(targetNode.server.hostname)
+			.withIdentifier(targetServer.hostname)
 			.print('Fluffing')
 		logger.info()
 			.terminal()
-			.withIdentifier(targetNode.server.hostname)
+			.withIdentifier(targetServer.hostname)
 			.print('Fluffing')
 		await fluffer.main(ns)
 	}
 	logger.info()
-		.withIdentifier(targetNode.server.hostname)
+		.withIdentifier(targetServer.hostname)
 		.print('Batching')
 	logger.info()
 		.terminal()
-		.withIdentifier(targetNode.server.hostname)
+		.withIdentifier(targetServer.hostname)
 		.print('Batching')
 	await batcher.main(ns)
 }

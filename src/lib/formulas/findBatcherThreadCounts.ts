@@ -7,14 +7,14 @@ export function findBatcherThreadCounts(ns: NS, percentage: number, growThreadsS
 	const mockedServer = mockServer(target)
 
 	// hack
-	const moneyPerHackThread = ns.hackAnalyze(target.hostname)
-	if (moneyPerHackThread === 0) {
+	const moneyPercentagePerHackThread = ns.hackAnalyze(target.hostname)
+	if (moneyPercentagePerHackThread === 0) {
 		throw new Error('Server ' + target.hostname + ' is not hackable')
 	}
-	const hackThreads = Math.ceil(percentage / moneyPerHackThread) // TODO maybe change to Math.floor
+	const hackThreads = Math.ceil(percentage / moneyPercentagePerHackThread) // TODO maybe change to Math.floor
 	const hackSecurityIncrease = hackThreads * enums.Security.hackIncrease
 	mockedServer.hackDifficulty! += hackSecurityIncrease
-	mockedServer.moneyAvailable! -= target.moneyMax! * moneyPerHackThread * hackThreads
+	mockedServer.moneyAvailable! -= target.moneyMax! * moneyPercentagePerHackThread * hackThreads
 
 	// grow
 	const targetPercentage = target.moneyMax! / mockedServer.moneyAvailable!

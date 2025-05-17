@@ -54,7 +54,7 @@ class ExpGrinder {
 
 		this.maxThreads = maxThreads
 
-		this._calculator = new FlufferCalculator(ns, targetServerHostname)
+		this._calculator = new FlufferCalculator(ns, ns.getServer(targetServerHostname))
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
 	}
 
@@ -82,14 +82,14 @@ class ExpGrinder {
 			}
 
 			const startedThreads = execReservations(this._ns, this._reservations, enums.LaunchpadScripts.weaken,
-				this._calculator.targetNode.server.hostname);
+				this._calculator.targetServer.hostname);
 
 			if (startedThreads !== this._reservedThreads) {
 				this._logger.error()
 					.withIdentifier(this._batch)
 					.withFormat('Started threads do not match reserved threads %s != %s')
 					.print(startedThreads, this._reservedThreads)
-				this._toaster.error('Reservation mismatch', this._calculator.targetNode.server.hostname)
+				this._toaster.error('Reservation mismatch', this._calculator.targetServer.hostname)
 			}
 
 			this._logger.info()
@@ -103,7 +103,7 @@ class ExpGrinder {
 
 			await this._ns.sleep(batchDuration)
 
-			this._calculator.refresh()
+			this._calculator.update()
 
 			this._batch++
 		}

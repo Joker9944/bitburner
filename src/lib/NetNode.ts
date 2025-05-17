@@ -25,27 +25,27 @@ function buildNetNode(ns: NS, parent: string, current: string, depth: number, ma
 }
 
 export class NetNode {
-	server: Server
+	private readonly _ns: NS
+
+	private _server: Server
+
 	parent?: NetNode
 	readonly children: NetNode[]
 	readonly depth: number
 	readonly netRoot: boolean
-	private readonly _ns: NS
-	private _mock = false
 
 	constructor(ns: NS, server: Server, children: NetNode[], depth: number, netRoot: boolean) {
 		this._ns = ns
-		this.server = server
+
+		this._server = server
 
 		this.children = children
 		this.depth = depth
 		this.netRoot = netRoot
 	}
 
-	refresh(): void {
-		if (!this._mock) {
-			this.server = this._ns.getServer(this.server.hostname)
-		}
+	public get server() {
+		return this._server
 	}
 
 	flat(): NetNode[] {
@@ -58,20 +58,8 @@ export class NetNode {
 		}
 	}
 
-	maxRamMB(): number {
-		return this.server.maxRam * 1000
-	}
-
-	usedRamMB(): number {
-		return this.server.ramUsed * 1000
-	}
-
-	freeRamMB(): number {
-		return this.maxRamMB() - this.usedRamMB()
-	}
-
 	searchPathUp(destinationHostname: string): NetNode[] {
-		if (this.server.hostname === destinationHostname) {
+		if (this._server.hostname === destinationHostname) {
 			return [this]
 		} else if (this.parent !== undefined) {
 			const path = this.parent?.searchPathUp(destinationHostname)
@@ -83,10 +71,7 @@ export class NetNode {
 		}
 	}
 
-	mockNode(mockServer: Server): NetNode {
-		const mock = {...this}
-		mock._mock = true
-		mock.server = mockServer
-		return mock
+	update() {
+		this._server = this._ns.getServer(this.server.hostname)
 	}
 }
