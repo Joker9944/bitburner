@@ -20,7 +20,7 @@ export class Backd00rDaemon {
 	readonly execServerHostname: string
 	readonly net: NetNode[]
 
-	backdoorInstalledServers: number
+	backdooredServersCount: number
 
 	constructor(ns: NS) {
 		this.ns = ns
@@ -31,16 +31,24 @@ export class Backd00rDaemon {
 		this.execServerHostname = 'home'
 
 		this.net = getNetNodes(ns, this.execServerHostname)
-			.filter(node => !ns.getServer(node.hostname).purchasedByPlayer)
-		this.backdoorInstalledServers = this.net.filter(node => !ns.getServer(node.hostname).backdoorInstalled).length
+			.filter(node => node.hostname !== 'home')
+			.filter(node => ns.getServer(node.hostname).backdoorInstalled !== undefined)
+		this.backdooredServersCount = this.net
+			.map(node => ns.getServer(node.hostname))
+			.filter(server => server.backdoorInstalled)
+			.length
+		this.logger
+			.info()
+			.withFormat('%s server(s) already backdoored')
+			.print(this.backdooredServersCount)
 	}
 
 	async main(): Promise<void> {
-		while (this.backdoorInstalledServers < this.net.length) {
-			const backdoorInstallableServers = this.net
+		while (this.backdooredServersCount < this.net.length) {
+			const backdoorableServers = this.net
 				.filter(node => {
 					const server = this.ns.getServer(node.hostname)
-					!server.backdoorInstalled && server.hasAdminRights
+					return !server.backdoorInstalled && server.hasAdminRights
 				})
 				.sort((a, b) => {
 					const serverA = this.ns.getServer(a.hostname)
@@ -57,8 +65,8 @@ export class Backd00rDaemon {
 						return (serverA.requiredHackingSkill ?? 0) - (serverB.requiredHackingSkill ?? 0)
 					}
 				})
-			if (backdoorInstallableServers.length > 0) {
-				const target = backdoorInstallableServers[0]
+			if (backdoorableServers.length > 0) {
+				const target = backdoorableServers[0]
 				await this.backdoor(target)
 			} else {
 				await this.ns.sleep(10000)
