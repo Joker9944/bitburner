@@ -46,7 +46,7 @@ export class R00terDaemon {
 
 			if (hackingSkillsMet.length > hackableServers.length) {
 				this.logger.warn()
-					.withIdentifier('Could root %s server(s) with more port breakers')
+					.withFormat('Could root %s server(s) with more port breakers')
 					.print(hackingSkillsMet.length)
 			}
 

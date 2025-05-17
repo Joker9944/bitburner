@@ -14,9 +14,9 @@ export class Toaster {
 	info(message: string, identifier: unknown): void
 	info(message: string, identifier?: unknown): void {
 		if (identifier) {
-			this.toast(message, Severity.warning, identifier)
+			this.toast(message, Severity.info, identifier)
 		} else {
-			this.toast(message, Severity.warning)
+			this.toast(message, Severity.info)
 		}
 	}
 
