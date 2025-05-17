@@ -10,14 +10,20 @@ export function autocomplete(data: AutocompleteData, args: string[]): unknown {
 
 export async function main(ns: NS): Promise<void> {
 	const args = ns.flags([])
-	const target = positionalArgument(args, 0, 'n00dles') as string
+	const targetHostname = positionalArgument(args, 0, 'n00dles') as string
+
+	// You can connect to home from everywhere
+	if (targetHostname === 'home') {
+		ns.singularity.connect('home')
+		return
+	}
 
 	const origin = ns.getHostname()
 	const netNodes = getNetNodes(ns)
-	const targetNode = netNodes.find((node) => node.hostname === target)
+	const targetNode = netNodes.find((node) => node.hostname === targetHostname)
 	if (targetNode !== undefined) {
 		targetNode.searchPathUp(origin).forEach(node => ns.singularity.connect(node.hostname))
 	} else {
-		new Logger(ns).error().terminal().withFormat('Could not find %s').print(target)
+		new Logger(ns).error().terminal().withFormat('Could not find %s').print(targetHostname)
 	}
 }

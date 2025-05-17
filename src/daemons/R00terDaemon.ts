@@ -54,7 +54,7 @@ export class R00terDaemon {
 				.filter(server => server.requiredHackingSkill !== undefined)
 				.filter(server => hackingLevel >= server.requiredHackingSkill!)
 			const hackableServers = hackingSkillsMet
-				.filter(server => ownedPortBreakersCount >= (server.numOpenPortsRequired ?? 0))
+				.filter(server => ownedPortBreakersCount >= server.numOpenPortsRequired!)
 
 			if (hackingSkillsMet.length > hackableServers.length) {
 				this.logger.warn()

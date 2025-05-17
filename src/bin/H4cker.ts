@@ -16,6 +16,8 @@ export async function main(ns: NS): Promise<void> {
 
 	const logger = new Logger(ns)
 
+	// TODO implement earnings prediction at start
+
 	const args = ns.flags([])
 	const targetServer = ns.getServer(positionalArgument(args, 0, 'n00dles') as string)
 	if (targetServer.hackDifficulty! > targetServer.minDifficulty! || targetServer.moneyAvailable! < targetServer.moneyMax!) {

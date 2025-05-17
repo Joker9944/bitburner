@@ -37,8 +37,8 @@ class RamManagerDaemon {
 			owner: hardReservationsOwner,
 			name: 'player',
 			hostname: 'home',
-			ramMB: 25000,
-			allocationSize: 25000,
+			ramMB: 35000,
+			allocationSize: 35000,
 		})
 	}
 
