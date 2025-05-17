@@ -53,7 +53,7 @@ class Batcher {
 
 	private readonly _calculator: HGWFormulasCalculator
 	private readonly _ramClient: IpcRamClient
-	private readonly _broadcastClient: IpcBroadcastClient<Bounds>
+	private readonly _cncClient: IpcBroadcastClient<Bounds>
 
 	private _maxThreads = 0
 	private _reservations: ReservationsByKey = {}
@@ -72,7 +72,7 @@ class Batcher {
 		this._calculator = new HGWFormulasCalculator(ns, ns.getServer(targetServerHostname),
 			maxHackPercentage, hackPercentageSuggestion)
 		this._ramClient = createRamClient(ns, identifierPrefix + targetServerHostname)
-		this._broadcastClient = createBroadcastClient(ns, enums.PortIndex.cncBroadcasting)
+		this._cncClient = createBroadcastClient(ns, enums.PortIndex.cncBroadcasting)
 	}
 
 	async main(): Promise<void> {
@@ -214,7 +214,7 @@ class Batcher {
 	}
 
 	async refreshMaxHackPercentage(): Promise<void> {
-		const bounds = await this._broadcastClient.get()
+		const bounds = await this._cncClient.get()
 		this._calculator.maxHackPercentage = bounds.maxHackPercentage
 	}
 

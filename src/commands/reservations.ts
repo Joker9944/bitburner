@@ -21,6 +21,7 @@ export async function main(ns: NS): Promise<void> {
 		return
 	}
 
+	// TODO list print
 	logger.logEntry()
 		.terminal()
 		.print('~~~~~~~~~~ Beginning reservations ~~~~~~~~~~')

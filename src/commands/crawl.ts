@@ -62,14 +62,17 @@ function travelNetTree(node: NetNode, printer: NetNodePrinter): void {
 }
 
 class NetNodePrinter {
+	private readonly _ns: NS
+
+	private readonly _formatter: Formatter
+	private readonly _logger: Logger
+
 	readonly hackingLevel: number
 	readonly ownedPortBreakersCount: number
-	private readonly _ns: NS
-	private readonly _logger: Logger
-	private readonly _formatter: Formatter
 
 	constructor(ns: NS, formatter: Formatter, logger: Logger) {
 		this._ns = ns
+
 		this._formatter = formatter
 		this._logger = logger
 

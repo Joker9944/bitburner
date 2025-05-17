@@ -7,7 +7,7 @@ import {CnCEndpoints} from "/daemons/cnc/CnCEndpoints";
 import {Logger} from "/lib/logging/Logger";
 
 export const cncDaemonIdentifier = 'daemon-cnc'
-export const cncDataFile = '/data/cnc.txt'
+export const cncDataFile = '/data/cnc.json'
 
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog('ALL')
