@@ -32,13 +32,12 @@ class RamManagerDaemon {
 		this._server = duplex(ns, ramManagerIdentifier, enums.PortIndex.ramMessagingClientIn, enums.PortIndex.ramMessagingServerIn)
 
 		this._reservationTable.home = []
-		// TODO automatically reserve space for daemons, H4cker, etc.
 		this._reservationTable.home.push({
 			owner: hardReservationsOwner,
 			name: 'player',
 			hostname: 'home',
-			ramMB: 35000,
-			allocationSize: 35000,
+			ramMB: 20000,
+			allocationSize: 20000,
 		})
 	}
 
@@ -140,7 +139,7 @@ class RamManagerDaemon {
 	updateContinuousReservations(): void {
 		this.releaseReservations(continuousReservationsOwner)
 		const processesByHost = Object.keys(this._ramTable).map((hostname) => {
-			const processes = this._ns.ps(hostname).filter(process => process.filename.startsWith('/daemons/') || process.filename.startsWith('/bin/'))
+			const processes = this._ns.ps(hostname).filter(process => process.filename.startsWith('daemons/') || process.filename.startsWith('bin/'))
 			return {
 				hostname: hostname,
 				processes: processes,
