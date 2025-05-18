@@ -98,7 +98,7 @@ class NetNodePrinter {
 		if (!server.hasAdminRights) {
 			this._logger.logEntry()
 				.terminal()
-				.withFormat('%s--Hacking: %s/%s, Ports: %s/%s')
+				.withFormat('%s--Hacking: %s/%s | Ports: %s/%s')
 				.print(indent(node.depth),
 					this.hackingLevel, server.requiredHackingSkill,
 					this.ownedPortBreakersCount, server.numOpenPortsRequired)
@@ -122,7 +122,7 @@ class NetNodePrinter {
 		if (format.length > 0) {
 			this._logger.logEntry()
 				.terminal()
-				.withFormat('%s--' + format.join(", "))
+				.withFormat('%s--' + format.join(" | "))
 				.print(indent(node.depth), ...data)
 		}
 		// Hacking hints
@@ -131,7 +131,7 @@ class NetNodePrinter {
 			const calculator = new HGWFormulasCalculator(this._ns, mockMaxServer(server), 0.3, 0.1)
 			this._logger.logEntry()
 				.terminal()
-				.withFormat('%s--%s / sec, %s hacking exp / sec, %s thread usage, Value: %s')
+				.withFormat('%s--%s / sec | %s hack exp / sec | %s thread usage | Value: %s')
 				.print(indent(node.depth),
 					this._formatter.money(calculator.calculateMoneyPerSecond()),
 					this._formatter.exp(calculator.calculateHackExpPerSecond()),
@@ -143,7 +143,7 @@ class NetNodePrinter {
 		if (server.maxRam !== 0) {
 			this._logger.logEntry()
 				.terminal()
-				.withFormat('%s--Cores: %s, RAM: %s/%s (%s)')
+				.withFormat('%s--Cores: %s | RAM: %s/%s (%s)')
 				.print(indent(node.depth),
 					server.cpuCores,
 					this._formatter.ram(server.ramUsed),

@@ -19,7 +19,6 @@ const refreshPeriod = 60000
 
 enum Args {
 	hackPercentageSuggestion = 'hack-percentage-suggestion',
-	growThreadSuggestion = 'grow-thread-suggestion',
 }
 
 export const argsSchema = [
@@ -89,8 +88,14 @@ class Batcher {
 				this.refreshHackPercentage()
 
 				this._logger.info()
-					.withFormat('Max: T %s / H%% %s')
+					.withFormat('Max:         T %s | H%% %s')
 					.print(this._maxThreads, this._formatter.percentage(this._calculator.maxHackPercentage))
+				this._logger.info()
+					.withFormat('Expectation: %s / sec, %s hack exp / sec')
+					.print(
+						this._formatter.money(this._calculator.calculateMoneyPerSecond(this._hackPercentage)),
+						this._formatter.exp(this._calculator.calculateHackExpPerSecond(this._hackPercentage))
+					)
 				this._logger.spacer()
 
 				this._lastRefresh = now
@@ -138,7 +143,7 @@ class Batcher {
 					.print(startedThreadsTotal, calculatedThreadsTotal)
 				this._logger.error()
 					.withIdentifier(this._batch)
-					.withFormat('H S %s C %s R %s / G S %s C %s R %s / W S %s C %s R %s')
+					.withFormat('H S %s C %s R %s | G S %s C %s R %s | W S %s C %s R %s')
 					.print(startedThreadsHack, calculatedThreadsResults.threads.hackThreadCount, calculateTotalTickets(this._reservations.hack),
 						startedThreadsGrow, calculatedThreadsResults.threads.growThreadCount, calculateTotalTickets(this._reservations.grow),
 						startedThreadsWeaken, calculatedThreadsResults.threads.weakenThreadCount, calculateTotalTickets(this._reservations.weaken))
@@ -155,12 +160,12 @@ class Batcher {
 
 			this._logger.info()
 				.withIdentifier(this._batch)
-				.withFormat('Calc: H %s / G %s / W %s / T %s / H%% %s')
+				.withFormat('Calc: H %s | G %s | W %s | T %s | H%% %s')
 				.print(calculatedThreadsResults.threads.hackThreadCount, calculatedThreadsResults.threads.growThreadCount, calculatedThreadsResults.threads.weakenThreadCount,
 					calculatedThreadsTotal, this._formatter.percentage(this._hackPercentage))
 			this._logger.info()
 				.withIdentifier(this._batch)
-				.withFormat(' Acc: H %s / G %s / W %s / T %s / R %s')
+				.withFormat(' Acc: H %s | G %s | W %s | T %s | R %s')
 				.print(startedThreadsHack, startedThreadsGrow, startedThreadsWeaken, startedThreadsTotal, this._reservedThreadsTotal)
 			this._logger.info()
 				.withIdentifier(this._batch)

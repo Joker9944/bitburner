@@ -70,6 +70,7 @@ export class R00terDaemon {
 					this.root(node)
 					this.copyLaunchpad(node)
 				}
+				this.portBreakerWarningCount = 0
 			} else {
 				await this.ns.sleep(10000)
 			}
