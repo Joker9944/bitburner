@@ -8,33 +8,32 @@ export async function main(ns: NS): Promise<void> {
 	const formatter = new Formatter(ns)
 	const logger = new Logger(ns)
 
-	let ramUsed = 0
 	let ramTotal = 0
+	let ramUsed = 0
 	getNetNodes(ns)
 		.map(node => ns.getServer(node.hostname))
 		.filter(server => server.hasAdminRights)
 		.forEach(server => {
-			ramUsed += server.ramUsed
 			ramTotal += server.maxRam
+			ramUsed += server.ramUsed
 		})
-	const ramUsedPercentage = ramUsed / ramTotal
-	const ramAvailable = ramTotal - ramUsed
 
-	const digitsCountTotal = numDigits(ramTotal)
-	logger.logEntry()
-		.terminal()
-		.withFormat("Total:".padEnd(11) + "%s")
-		.print(formatter.ram(ramTotal))
-	logger.logEntry()
-		.terminal()
-		.withFormat("Used:".padEnd(11 + digitsCountTotal - numDigits(ramUsed), " ") + "%s (%s)")
-		.print(formatter.ram(ramUsed), formatter.percentage(ramUsedPercentage))
-	logger.logEntry()
-		.terminal()
-		.withFormat("Available:".padEnd(11 + digitsCountTotal - numDigits(ramAvailable), " ") + "%s")
-		.print(formatter.ram(ramAvailable))
-}
+	const ramTotalFormated = formatter.ram(ramTotal)
+	const ramUsedFormated = formatter.ram(ramTotal)
+	const ramAvailableFormated = formatter.ram(ramTotal - ramUsed)
 
-function numDigits(n: number) {
-	return (Math.log10((n ^ (n >> 31)) - (n >> 31)) | 0) + 1;
+	const padding = Math.max(ramTotalFormated.length, ramUsedFormated.length, ramAvailableFormated.length)
+
+	logger.logEntry()
+		.terminal()
+		.withFormat("Total:".padEnd(11 + padding - ramTotalFormated.length, ' ') + "%s")
+		.print(ramTotalFormated)
+	logger.logEntry()
+		.terminal()
+		.withFormat("Used:".padEnd(11 + padding - ramUsedFormated.length, ' ') + "%s (%s)")
+		.print(ramUsedFormated, formatter.percentage(ramUsed / ramTotal))
+	logger.logEntry()
+		.terminal()
+		.withFormat("Available:".padEnd(11 + padding - ramAvailableFormated.length, ' ') + "%s")
+		.print(ramAvailableFormated)
 }

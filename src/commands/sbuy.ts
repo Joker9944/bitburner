@@ -5,10 +5,12 @@ import {Logger} from "/lib/logging/Logger";
 
 enum Args {
 	all = 'all',
+	next = 'next',
 }
 
 export const argsSchema = [
-	[Args.all, false]
+	[Args.all, false],
+	[Args.next, false],
 ] as ArgsSchema
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -53,6 +55,10 @@ function shoppingList(ns: NS): enums.PortBreakerFiles[] {
 	const args = ns.flags(argsSchema)
 	if (args[Args.all] as boolean) {
 		return Object.values(enums.PortBreakerFiles)
+	} else if (args[Args.next]) {
+		return Object.values(enums.PortBreakerFiles)
+			.filter(portBreaker => !ns.fileExists(portBreaker))
+			.slice(0, 1)
 	} else {
 		return args[enums.CommonArgs.positional] as enums.PortBreakerFiles[]
 	}

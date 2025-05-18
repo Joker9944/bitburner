@@ -1,6 +1,5 @@
 import {AutocompleteData, NS} from '@ns'
 import {Logger} from '/lib/logging/Logger'
-import {getNetNode} from '/lib/NetNode'
 import * as fluffer from '/bin/Fluffer'
 import * as batcher from '/bin/Batcher'
 import {positionalArgument} from '/lib/positionalArgument'

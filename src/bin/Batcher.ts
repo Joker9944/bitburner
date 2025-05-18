@@ -88,10 +88,10 @@ class Batcher {
 				this.refreshHackPercentage()
 
 				this._logger.info()
-					.withFormat('Max:         T %s | H%% %s')
+					.withFormat('  Max: T %s | H%% %s')
 					.print(this._maxThreads, this._formatter.percentage(this._calculator.maxHackPercentage))
 				this._logger.info()
-					.withFormat('Expectation: %s / sec, %s hack exp / sec')
+					.withFormat('Stats: %s / sec, %s hack exp / sec')
 					.print(
 						this._formatter.money(this._calculator.calculateMoneyPerSecond(this._hackPercentage)),
 						this._formatter.exp(this._calculator.calculateHackExpPerSecond(this._hackPercentage))
